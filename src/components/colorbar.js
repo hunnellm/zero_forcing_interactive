@@ -4,6 +4,7 @@ import {
   CheckCircle as CheckIcon,
   Circle as CircleIcon,
   Undo as ResetIcon,
+  SkipPrevious as StepBackIcon,
   SkipNext as StepIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
@@ -12,7 +13,7 @@ import { useApp } from '../context'
 export const Colorbar = () => {
   const theme = useTheme()
   const { compact } = useApp()
-  const { colorStep, graph } = useGraph()
+  const { colorStep, stepBack, canStepBack, graph } = useGraph()
 
   const conditionalStyles = useMemo(() => compact ? ({
       bottom: 0,
@@ -25,6 +26,29 @@ export const Colorbar = () => {
       width: 'calc(100% - 4rem)',
       borderRadius: theme.shape.borderRadius / 2,  
     }), [compact])
+
+  if (graph.drawMode) {
+    return (
+      <Box sx={{
+        position: 'absolute',
+        boxSizing: 'border-box',
+        backgroundColor: theme.palette.background.paper,
+        transition: 'filter 250ms',
+        filter: 'opacity(0.8)',
+        '&:hover': { filter: 'opacity(1.0)' },
+        padding: theme.spacing(2),
+        zIndex: 9,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...conditionalStyles,
+      }}>
+        <Typography color="text.secondary" variant="body2">
+          Draw mode: click the canvas to add a node · click a node then another to add an edge
+        </Typography>
+      </Box>
+    )
+  }
 
   return (
     <Box sx={{
@@ -66,6 +90,16 @@ export const Colorbar = () => {
               onClick={ graph.uncolorAllNodes }
               disabled={ graph.coloredNodes.size === 0 }
             ><ResetIcon fontSize="small" /></IconButton>
+          </Stack>
+        </Tooltip>
+        <Tooltip title="Step Back" placement="top">
+          <Stack justifyContent="center">
+            <IconButton
+              color="primary"
+              size="small"
+              onClick={ stepBack }
+              disabled={ !canStepBack }
+            ><StepBackIcon fontSize="small" /></IconButton>
           </Stack>
         </Tooltip>
         <Tooltip title="Apply Coloring Rule" placement="top">

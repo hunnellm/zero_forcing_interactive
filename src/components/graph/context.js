@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
+import { addNodeToMatrix, addEdgeToMatrix } from '../../lib/matrix-utils'
 
 const initialGraph = [
   [0, 1, 0, 0, 0, 0, 0, 0, 1],
@@ -28,8 +29,10 @@ export const GraphProvider = ({ children }) => {
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
   const [coloredNodes, setColoredNodes] = useState(new Set())
+  const [colorHistory, setColorHistory] = useState([])
   const [color, setColor] = useLocalStorage('node-color', '#a14f92')
   const [nodeSize, setNodeSize] = useLocalStorage('node-size', 4)
+  const [drawMode, setDrawMode] = useState(false)
   
   useEffect(() => {
     setNodes([...Array(adjacencyMatrix.rows).keys()].map(i => ({ id: i })))
@@ -74,7 +77,10 @@ export const GraphProvider = ({ children }) => {
     setColoredNodes(_coloredNodes)
   }, [coloredNodes])
 
-  const uncolorAllNodes = () => setColoredNodes(new Set())
+  const uncolorAllNodes = () => {
+    setColorHistory([])
+    setColoredNodes(new Set())
+  }
 
   const neighbors = useCallback(i => {
     let neighbors = new Set([i])
@@ -87,6 +93,7 @@ export const GraphProvider = ({ children }) => {
   }, [coloredNodes])
 
   const colorStep = useCallback(() => {
+    setColorHistory(prev => [...prev, new Set(coloredNodes)])
     const nextColoredNodes = new Set();
     [...coloredNodes].forEach(i => {
       const uncoloredNeighbors = [...neighbors(i)].filter(i =>  !coloredNodes.has(i))
@@ -96,6 +103,25 @@ export const GraphProvider = ({ children }) => {
     })
     setColoredNodes(new Set([...coloredNodes, ...nextColoredNodes]))
   }, [coloredNodes])
+
+  const stepBack = useCallback(() => {
+    if (colorHistory.length === 0) return
+    const prev = colorHistory[colorHistory.length - 1]
+    setColorHistory(h => h.slice(0, -1))
+    setColoredNodes(new Set(prev))
+  }, [colorHistory])
+
+  const toggleDrawMode = useCallback(() => setDrawMode(d => !d), [])
+
+  const addNode = useCallback(() => {
+    setMatrix(addNodeToMatrix(matrix))
+    setColorHistory([])
+    setColoredNodes(new Set())
+  }, [matrix])
+
+  const addEdge = useCallback((srcId, tgtId) => {
+    setMatrix(addEdgeToMatrix(matrix, srcId, tgtId))
+  }, [matrix])
 
   return (
     <GraphContext.Provider value={{
@@ -110,6 +136,10 @@ export const GraphProvider = ({ children }) => {
         toggleNeighborhoodColor,
         uncolorAllNodes,
         neighbors,
+        addNode,
+        addEdge,
+        drawMode,
+        toggleDrawMode,
         settings: {
           color,
           setColor,
@@ -118,6 +148,8 @@ export const GraphProvider = ({ children }) => {
         },
       },
       colorStep,
+      stepBack,
+      canStepBack: colorHistory.length > 0,
       matrix,
       setMatrix,
     }}>

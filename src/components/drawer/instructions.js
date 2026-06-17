@@ -24,6 +24,38 @@ export const Instructions = () => {
           component="span">STEP</Typography> to see whether it does indeed force
           the whole graph to become colored.
         </Typography>
+        <Typography paragraph>
+          The <Typography color="primary" component="span">Step Back</Typography> button
+          (⏮) undoes the last coloring step, restoring the previous coloring state.
+          Multiple steps can be undone in sequence.
+          The <Typography color="primary" component="span">Reset</Typography> button
+          (↩) clears all colored nodes and the step history at once.
+        </Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="h2" sx={{ fontSize: '135%' }}>
+          Draw Graph Mode
+        </Typography>
+
+        <br />
+
+        <Typography paragraph>
+          Click the <Typography color="primary" component="span">pencil icon</Typography> (✏)
+          in the toolbar to enter Draw Graph mode.
+          In this mode:
+        </Typography>
+        <Typography component="ul" sx={{ pl: 3 }}>
+          <li>Click anywhere on the canvas background to add a new isolated node.</li>
+          <li>Click a node to select it as an edge source (it will be highlighted).</li>
+          <li>Click a second node to draw an edge between the two nodes.</li>
+          <li>Click the selected node again to deselect it.</li>
+        </Typography>
+        <Typography paragraph sx={{ mt: 1 }}>
+          Click the pencil icon again to exit Draw mode and return to coloring interaction.
+          The adjacency matrix is kept in sync automatically, so the new graph can be exported
+          or further edited via the Matrix tab.
+        </Typography>
       </Box>
 
       <Box>

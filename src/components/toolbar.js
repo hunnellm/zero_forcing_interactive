@@ -4,6 +4,7 @@ import {
   Close as CloseDrawerIcon,
   Settings as SettingsIcon,
   Download as DownloadIcon,
+  Edit as DrawIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
 
@@ -38,6 +39,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           position: 'relative',
         }}
       >
+        <Tooltip title={ graph.drawMode ? 'Exit Draw Mode' : 'Draw Graph Mode' } placement="bottom">
+          <IconButton
+            size="small"
+            onClick={ graph.toggleDrawMode }
+            sx={{
+              color: graph.drawMode ? theme.palette.primary.main : theme.palette.text.primary,
+              transition: 'color 250ms',
+              '&:hover': { color: theme.palette.primary.main }
+            }}
+          ><DrawIcon /></IconButton>
+        </Tooltip>
+
         <Tooltip title="Download Graph as PNG" placement="bottom">
           <IconButton
             size="small"

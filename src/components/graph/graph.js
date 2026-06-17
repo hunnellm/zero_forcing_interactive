@@ -11,6 +11,15 @@ export const Graph = ({ nodes, edges, height, width }) => {
   const { graph } = useGraph()
   const fgRef = useRef()
   const [highlightedNodes, setHighlightedNodes] = useState(new Set())
+  // In draw mode: the first selected node for edge creation (or null)
+  const [drawSrcNode, setDrawSrcNode] = useState(null)
+
+  // Clear draw selection when leaving draw mode
+  useEffect(() => {
+    if (!graph.drawMode) {
+      setDrawSrcNode(null)
+    }
+  }, [graph.drawMode])
 
   const updateHighlight = () => {
     setHighlightedNodes(highlightedNodes)
@@ -26,24 +35,46 @@ export const Graph = ({ nodes, edges, height, width }) => {
     updateHighlight()
   }
 
-  const paintRing = useCallback((node, ctx) => {
+  const paintRing = useCallback((node, ctx, color) => {
     ctx.beginPath()
     ctx.arc(node.x, node.y, graph.settings.nodeSize + 1.5, 0, 2 * Math.PI, false)
-    ctx.strokeStyle = `${ graph.settings.color }66`
+    ctx.strokeStyle = color || `${ graph.settings.color }66`
     ctx.lineWidth = 3
     ctx.stroke()
   }, [graph.settings])
 
   const handleClickNode = useCallback((node, event) => {
+    if (graph.drawMode) {
+      if (drawSrcNode === null) {
+        // Select this node as edge source
+        setDrawSrcNode(node.id)
+      } else if (drawSrcNode === node.id) {
+        // Click same node — deselect
+        setDrawSrcNode(null)
+      } else {
+        // Create edge between drawSrcNode and clicked node
+        graph.addEdge(drawSrcNode, node.id)
+        setDrawSrcNode(null)
+      }
+      return
+    }
     if (event.ctrlKey) {
       graph.toggleNeighborhoodColor(node.id)
       return
     }
     graph.toggleNodeColor(node.id)
-  }, [graph.coloredNodes])
+  }, [graph.coloredNodes, graph.drawMode, graph.addEdge, drawSrcNode])
+
+  const handleBackgroundClick = useCallback(() => {
+    if (!graph.drawMode) return
+    graph.addNode()
+  }, [graph.drawMode, graph.addNode])
 
   const nodeCanvasObject = useCallback(({ x, y, id }, context) => {
-    if (highlightedNodes.has(id)) {
+    if (graph.drawMode && drawSrcNode === id) {
+      // Draw a distinct selection ring in draw mode
+      paintRing({ x, y }, context, theme.palette.secondary.main)
+    } else if (highlightedNodes.has(id)) {
       paintRing({ x, y }, context)
     }
     context.fillStyle = graph.coloredNodes.has(id)
@@ -55,7 +86,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
     context.strokeStyle = theme.palette.grey[800]
     context.stroke()
     context.fill()
-  }, [graph.coloredNodes, graph.settings])
+  }, [graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes])
 
   const nodePaint = ({ x, y }, color, context) => {
     context.fillStyle = color
@@ -87,8 +118,9 @@ export const Graph = ({ nodes, edges, height, width }) => {
       nodePointerAreaPaint={ nodePaint }
       nodeCanvasObject={ nodeCanvasObject }
       onNodeClick={ handleClickNode }
-      onNodeHover={ handleHoverNode  }
-      onNodeDrag={ handleHoverNode }
+      onNodeHover={ graph.drawMode ? undefined : handleHoverNode }
+      onNodeDrag={ graph.drawMode ? undefined : handleHoverNode }
+      onBackgroundClick={ handleBackgroundClick }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
       nodeLabel={ node => `${ node.id }` }
