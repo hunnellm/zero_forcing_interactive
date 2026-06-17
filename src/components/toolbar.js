@@ -5,6 +5,7 @@ import {
   Settings as SettingsIcon,
   Download as DownloadIcon,
   Edit as DrawIcon,
+  Refresh as RedrawIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
 
@@ -49,6 +50,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
               '&:hover': { color: theme.palette.primary.main }
             }}
           ><DrawIcon /></IconButton>
+        </Tooltip>
+
+        <Tooltip title="Redraw Graph" placement="bottom">
+          <IconButton
+            size="small"
+            onClick={ graph.triggerManualRedraw }
+            sx={{
+              color: theme.palette.text.primary,
+              transition: 'color 250ms',
+              '&:hover': { color: theme.palette.primary.main }
+            }}
+          ><RedrawIcon /></IconButton>
         </Tooltip>
 
         <Tooltip title="Download Graph as PNG" placement="bottom">

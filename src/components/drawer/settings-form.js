@@ -77,6 +77,19 @@ export const SettingsForm = () => {
         <Typography variant="h2" sx={{ flex: 1, fontSize: '135%' }}>Graph Settings</Typography>
 
         <FormControl sx={{ flexDirection: 'row', gap: '2rem' }}>
+          <FormLabel color="primary">Auto Redraw</FormLabel>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={ graph.settings.autoRedraw }
+                onChange={ graph.settings.toggleAutoRedraw }
+              />
+            }
+            label={ graph.settings.autoRedraw ? 'On' : 'Off' }
+          />
+        </FormControl>
+
+        <FormControl sx={{ flexDirection: 'row', gap: '2rem' }}>
           <FormLabel color="primary">Node Size</FormLabel>
           <Slider
             aria-label="Node size"
