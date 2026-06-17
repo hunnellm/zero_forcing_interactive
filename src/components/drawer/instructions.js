@@ -36,7 +36,7 @@ export const Instructions = () => {
         <Typography paragraph>
           To read more about zero-forcing an this application, please consult the ABOUT tab.
           The MATRIX tab provides the ability to render different graphs by entering an adjacency
-          matrix and clicking the GENERATE GRAPH button.
+          matrix or graph6 string and clicking the GENERATE GRAPH button.
           For convenience, a few preset matrices are available to choose from.
           The SETTINGS tab gives some UI customization options.
           The INSTRUCTIONS tab, of course, is what you{`'`}re reading now.
