@@ -6,7 +6,7 @@
     "watch": "webpack --watch",
     "build": "NODE_ENV=production webpack",
     "build-dev": "webpack",
-    "test": "node ./src/lib/graph6.test.js",
+    "test": "node ./src/lib/graph6.test.js && node ./src/lib/matrix-utils.test.js",
     "lint": "eslint ./src/index.js ./src/components/**/*.js",
     "lint:fix": "eslint --fix ./src/index.js ./src/components/**/*.js",
     "clean": "rm -rf dist",
