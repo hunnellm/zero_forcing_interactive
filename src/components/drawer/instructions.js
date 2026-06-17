@@ -34,8 +34,8 @@ export const Instructions = () => {
         <br />
         
         <Typography paragraph>
-          To read more about zero-forcing an this application, please consult the ABOUT tab.
-          The MATRIX tab provides the ability to render different graphs by entering an adjacency
+          To read more about zero-forcing and this application, please consult the ABOUT tab.
+          The DRAW GRAPH tab provides the ability to render different graphs by entering an adjacency
           matrix or graph6 string and clicking the GENERATE GRAPH button.
           For convenience, a few preset matrices are available to choose from.
           The SETTINGS tab gives some UI customization options.
