@@ -1,6 +1,6 @@
 {
   "private": "true",
-  "homepage": "http://mbwatson.github.io/graph-zero-forcing",
+  "homepage": "http://hunnellm.github.io/zero_forcing_interactive",
   "scripts": {
     "start": "SERVE=true webpack serve",
     "watch": "webpack --watch",
