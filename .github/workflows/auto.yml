@@ -25,15 +25,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # If your site is plain HTML/CSS/JS in the repo root, keep this as-is.
-      # If your built files live elsewhere, change 'path' to that folder (e.g. dist, build, docs).
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Verify index exists
+        run: |
+          test -f ./src/index.html || (echo "Missing ./src/index.html" && exit 1)
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./src
 
       - name: Deploy to GitHub Pages
         id: deployment
