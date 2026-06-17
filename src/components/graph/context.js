@@ -32,7 +32,9 @@ export const GraphProvider = ({ children }) => {
   const [colorHistory, setColorHistory] = useState([])
   const [color, setColor] = useLocalStorage('node-color', '#a14f92')
   const [nodeSize, setNodeSize] = useLocalStorage('node-size', 4)
+  const [autoRedraw, setAutoRedraw] = useLocalStorage('auto-redraw', true)
   const [drawMode, setDrawMode] = useState(false)
+  const [manualRedrawActive, setManualRedrawActive] = useState(false)
   
   useEffect(() => {
     setNodes([...Array(adjacencyMatrix.rows).keys()].map(i => ({ id: i })))
@@ -113,6 +115,12 @@ export const GraphProvider = ({ children }) => {
 
   const toggleDrawMode = useCallback(() => setDrawMode(d => !d), [])
 
+  const toggleAutoRedraw = useCallback(() => setAutoRedraw(v => !v), [])
+
+  const triggerManualRedraw = useCallback(() => setManualRedrawActive(true), [])
+
+  const clearManualRedraw = useCallback(() => setManualRedrawActive(false), [])
+
   const addNode = useCallback(() => {
     setMatrix(addNodeToMatrix(matrix))
     setColorHistory([])
@@ -140,11 +148,16 @@ export const GraphProvider = ({ children }) => {
         addEdge,
         drawMode,
         toggleDrawMode,
+        manualRedrawActive,
+        triggerManualRedraw,
+        clearManualRedraw,
         settings: {
           color,
           setColor,
           nodeSize,
           setNodeSize,
+          autoRedraw,
+          toggleAutoRedraw,
         },
       },
       colorStep,

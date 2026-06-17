@@ -108,6 +108,12 @@ export const Graph = ({ nodes, edges, height, width }) => {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [fgRef.current])
 
+  useEffect(() => {
+    if (graph.manualRedrawActive && fgRef.current) {
+      fgRef.current.d3ReheatSimulation()
+    }
+  }, [graph.manualRedrawActive])
+
   return (
     <ForceGraph2D
       ref={ fgRef }
@@ -121,10 +127,12 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onNodeHover={ graph.drawMode ? undefined : handleHoverNode }
       onNodeDrag={ graph.drawMode ? undefined : handleHoverNode }
       onBackgroundClick={ handleBackgroundClick }
+      onEngineStop={ graph.manualRedrawActive ? graph.clearManualRedraw : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
       nodeLabel={ node => `${ node.id }` }
       autoPauseRedraw={ false }
+      cooldownTicks={ (graph.settings.autoRedraw || graph.manualRedrawActive) ? Infinity : 0 }
     />
   )
 }
