@@ -12,10 +12,7 @@ export const About = () => {
         <br />
 
         <Typography paragraph>
-          This application was created to supplement thinking about zero forcing on graphs,
-          particularly as it relates to the inverse eigenvalue problem.
-          This application continues to exist and is under active development (when time is available)
-          simply because it{ `'` }s fun to work on, and it{ `'` }s fun to play with.
+          This application is intended to help those new to zero forcing to visualize the process. More features will be added as time and tokens are available.
         </Typography>
       </Box>
 
@@ -29,27 +26,19 @@ export const About = () => {
         <Typography paragraph>
           <strong>Zero forcing</strong> is an iterative graph coloring process, during
           which a coloring rule is applied. Our coloring rule says that, given
-          a set of colored vertices, any colored vertex with a single uncolored
-          neighbor causes that neighbor to be colored.
+          a set of filled vertices, any filled vertex with a single unfilled
+          neighbor causes that neighbor to become filled. This is called a force.
         </Typography>
         <Typography paragraph>
           A <strong>zero forcing set</strong> is a set of initially colored vertices which,
-          after applying the coloring rule some number of times, eventually colors the entire graph.
-          Of particular interest, is identifying <strong>minimal</strong> zero forcing sets.
+          after applying the coloring rule until no more forces are possible, every vertex of the graph is filled.
+          Of particular interest, is identifying <strong>minimal</strong> and <strong>minimum</strong> zero forcing sets.
         </Typography>
       </Box>
 
       <Divider />
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'flex-end' }}>
-        <Tooltip title="View the source code on GitHub" placement="left">
-          <a
-            href="https://github.com/mbwatson/graph-zero-forcing"
-            target="_blank"
-            rel="noreferrer noopener"
-          ><GitHubIcon /></a>
-        </Tooltip>
-      </Box>
+      
     </Stack>
   )
 }
