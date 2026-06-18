@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import {
+  Box,
   CardContent, Drawer as MuiDrawer,
   Tab, Tabs, useTheme,
 } from '@mui/material'
@@ -76,32 +77,44 @@ export const Drawer = () => {
       anchor="top"
       sx={{ zIndex: 1 }}
       PaperProps={{
-        style: {
+        sx: {
           backgroundColor: theme.palette.background.paper,
-          paddingTop: theme.spacing(9),
-          margin: compact ? 0 : '0 1rem',
+          pt: theme.spacing(9),
+          mx: compact ? 0 : '1rem',
+          height: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
         }
       }}
     >
-      <CardContent>
+      <CardContent
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          flex: 1,
+        }}
+      >
         <Tabs
           aria-label="settings tabs"
           value={ currentTab }
           onChange={ handleClickTab }
           variant="scrollable"
+          sx={{ flexShrink: 0 }}
         >
           {
             tabs.map(tab => <Tab label={ tab.label } key={ `tab-label-${ tab.label }` } /> )
           }
         </Tabs>
-        <br />
-        {
-          tabs.map(({ Component, ...tab }, i) => (
-            <TabPanel value={ currentTab } index={ i } key={ `tab-${ tab.label }` }>
-              <Component />
-            </TabPanel>
-          ))
-        }
+        <Box sx={{ mt: 2, minHeight: 0, flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {
+            tabs.map(({ Component, ...tab }, i) => (
+              <TabPanel value={ currentTab } index={ i } key={ `tab-${ tab.label }` }>
+                <Component />
+              </TabPanel>
+            ))
+          }
+        </Box>
       </CardContent>
     </MuiDrawer>
   )
