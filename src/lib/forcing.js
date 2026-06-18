@@ -141,7 +141,7 @@ export const runForcingStep = ({
       )
       const updatedWeight = (nextWeights.get(receiver) || 0) + transmittedWeight
       nextWeights.set(receiver, updatedWeight)
-      if (updatedWeight > beta) {
+      if (updatedWeight >= beta) {
         nextColoredNodes.add(receiver)
       }
     })
