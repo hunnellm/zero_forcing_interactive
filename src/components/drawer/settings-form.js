@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Box, FormControl, FormControlLabel, FormLabel, Slider, Stack, Switch, Typography, useTheme } from '@mui/material'
 import { HexColorPicker } from 'react-colorful'
 import { useGraph } from '../graph'
@@ -8,6 +8,15 @@ export const SettingsForm = () => {
   const theme = useTheme()
   const { graph } = useGraph()
   const { MODES, mode, setMode } = useApp()
+
+  // Ensure auto redraw defaults to OFF for first-time users.
+  // If a value already exists in localStorage, keep it.
+  useEffect(() => {
+    const hasStoredPreference = localStorage.getItem('auto-redraw') !== null
+    if (!hasStoredPreference && graph?.settings?.autoRedraw !== false) {
+      graph.settings.toggleAutoRedraw()
+    }
+  }, [graph])
 
   const switchStyle = useMemo(() => ({
     width: 62,
@@ -44,7 +53,7 @@ export const SettingsForm = () => {
         backgroundPosition: 'center',
         backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20"><path fill="${encodeURIComponent(
           '#fff',
-        )}" d="M9.305 1.667V3.75h1.389V1.667h-1.39zm-4.707 1.95l-.982.982L5.09 6.072l.982-.982-1.473-1.473zm10.802 0L13.927 5.09l.982.982 1.473-1.473-.982-.982zM10 5.139a4.872 4.872 0 00-4.862 4.86A4.872 4.872 0 0010 14.862 4.872 4.872 0 0014.86 10 4.872 4.872 0 0010 5.139zm0 1.389A3.462 3.462 0 0113.471 10a3.462 3.462 0 01-3.473 3.472A3.462 3.462 0 016.527 10 3.462 3.462 0 0110 6.528zM1.665 9.305v1.39h2.083v-1.39H1.666zm14.583 0v1.39h2.084v-1.39h-2.084zM5.09 13.928L3.616 15.4l.982.982 1.473-1.473-.982-.982zm9.82 0l-.982.982 1.473 1.473.982-.982-1.473-1.473zM9.305 16.25v2.083h1.389V16.25h-1.39z"/></svg>')`,
+        )}" d="M9.305 1.667V3.75h1.389V1.667h-1.39zm-4.707 1.95l-.982.982L5.09 6.072l.982-.982-1.473-1.473zm10.802 0L13.927 5.09l.982.982 1.473-1.473-.982-.982zM10 5.139a4.872 4.872 0 00-4.862 4.861A4.872 4.872 0 0010 14.861 4.872 4.872 0 0014.862 10 4.872 4.872 0 0010 5.139zM1.667 9.305v1.39H3.75v-1.39H1.667zm14.583 0v1.39h2.083v-1.39H16.25zm-2.323 4.623l-.982.982 1.473 1.473.982-.982-1.473-1.473zm-8.837 0L3.617 15.4l.982.982 1.473-1.473-.982-.982zM9.305 16.25v2.083h1.389V16.25h-1.39z"/></svg>')`,
       },
     },
     '& .MuiSwitch-track': {
@@ -52,8 +61,8 @@ export const SettingsForm = () => {
       backgroundColor: theme.palette.background.default,
       borderRadius: 20 / 2,
     },
-  }), [mode])
-  
+  }), [mode, theme.palette.background.default, theme.palette.primary.dark])
+
   return (
     <Box>
       <Stack direction="column" spacing={ 4 }>
@@ -66,7 +75,7 @@ export const SettingsForm = () => {
             control={
               <Switch
                 checked={ mode === MODES.dark }
-                onChange={ () => setMode(event.target.checked ? MODES.dark : MODES.light) }
+                onChange={ (event) => setMode(event.target.checked ? MODES.dark : MODES.light) }
                 sx={ switchStyle }
               />
             }
