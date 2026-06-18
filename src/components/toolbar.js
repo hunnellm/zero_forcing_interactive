@@ -45,7 +45,7 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           component="div"
           sx={{ color: theme.palette.text.primary, fontWeight: 700, letterSpacing: '0.05em' }}
         >
-          Graph Zero Forcing
+          Visualizing Variants of Zero Forcing Processes
         </Typography>
 
         <Stack spacing={ 1 } direction="row" alignItems="center">
