@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
 import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix } from '../../lib/matrix-utils'
+import { encodeGraph6 } from '../../lib/graph6'
 import {
   FORCING_MODES,
   clampParameter,
@@ -32,6 +33,7 @@ export const GraphProvider = ({ children }) => {
   // adjacencyMatrix will be the instance of the Matrix object,
   // which provides all those calculation helpers.
   const adjacencyMatrix = useMemo(() => new Matrix(matrix), [matrix])
+  const graph6String = useMemo(() => encodeGraph6(matrix), [matrix])
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
   const [coloredNodes, setColoredNodes] = useState(new Set())
@@ -260,6 +262,7 @@ export const GraphProvider = ({ children }) => {
         nodes,
         edges,
         adjacencyMatrix,
+        graph6String,
         setMatrix,
         colorNode,
         coloredNodes,
