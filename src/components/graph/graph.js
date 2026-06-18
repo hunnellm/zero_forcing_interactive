@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import loadable from '@loadable/component'
 import { useTheme } from '@mui/material'
@@ -114,12 +114,14 @@ export const Graph = ({ nodes, edges, height, width }) => {
     }
   }, [graph.manualRedrawActive])
 
+  const graphData = useMemo(() => ({ nodes, links: edges }), [nodes, edges])
+
   return (
     <ForceGraph2D
       ref={ fgRef }
       height={ height }
       width={ width }
-      graphData={{ nodes, links: edges }}
+      graphData={ graphData }
       enablePointerInteraction={ true }
       nodePointerAreaPaint={ nodePaint }
       nodeCanvasObject={ nodeCanvasObject }
