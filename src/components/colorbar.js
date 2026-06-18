@@ -1,5 +1,16 @@
 import { useMemo } from 'react'
-import { Box, Button, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material'
+import {
+  Box,
+  Button,
+  IconButton,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+  useTheme,
+} from '@mui/material'
 import {
   CheckCircle as CheckIcon,
   Circle as CircleIcon,
@@ -14,6 +25,7 @@ export const Colorbar = () => {
   const theme = useTheme()
   const { compact } = useApp()
   const { colorStep, stepBack, canStepBack, graph } = useGraph()
+  const transmissionModeActive = graph.forcing.mode === graph.forcing.modes.TRANSMISSION
 
   const conditionalStyles = useMemo(() => compact ? ({
       bottom: 0,
@@ -80,6 +92,43 @@ export const Colorbar = () => {
         <Typography component={ Stack } justifyContent="center" color="text.primary">
           { graph.coloredNodes.size } of { graph.nodes.length } colored nodes
         </Typography>
+      </Stack>
+      <Stack spacing={ 1.5 } direction="row" alignItems="center">
+        <ToggleButtonGroup
+          color="primary"
+          value={ graph.forcing.mode }
+          exclusive
+          size="small"
+          onChange={ (event, nextMode) => {
+            if (nextMode) {
+              graph.forcing.setMode(nextMode)
+            }
+          } }
+        >
+          <ToggleButton value={ graph.forcing.modes.ZERO }>Zero Forcing</ToggleButton>
+          <ToggleButton value={ graph.forcing.modes.PSD }>PSD Zero Forcing</ToggleButton>
+          <ToggleButton value={ graph.forcing.modes.TRANSMISSION }>Transmission Forcing</ToggleButton>
+        </ToggleButtonGroup>
+        <TextField
+          label="α"
+          type="number"
+          size="small"
+          value={ graph.forcing.alpha }
+          onChange={ event => graph.forcing.setAlpha(event.target.value) }
+          inputProps={{ min: 0, max: 1, step: 0.01 }}
+          disabled={ !transmissionModeActive }
+          sx={{ width: 95 }}
+        />
+        <TextField
+          label="β"
+          type="number"
+          size="small"
+          value={ graph.forcing.beta }
+          onChange={ event => graph.forcing.setBeta(event.target.value) }
+          inputProps={{ min: 0, max: 1, step: 0.01 }}
+          disabled={ !transmissionModeActive }
+          sx={{ width: 95 }}
+        />
       </Stack>
       <Stack spacing={ 2 } direction="row">
         <Tooltip title="Reset Coloring" placement="top">

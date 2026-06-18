@@ -11,10 +11,17 @@ neighbors of the clicked node.
 
 ### Step Forward / Step Back
 
-- **STEP** — applies one iteration of the zero-forcing coloring rule to the current colored set.
+- **Mode selector** — choose **Zero Forcing**, **PSD Zero Forcing**, or **Transmission Forcing**.
+- **STEP** — applies one iteration of the selected forcing rule to the current colored set.
 - **Step Back (⏮)** — undoes the last STEP, restoring the previous coloring state. Multiple steps
   can be undone in sequence.
 - **Reset (↩)** — clears all colored nodes and the full step history at once.
+
+In **Transmission Forcing**, each initially filled vertex starts at weight `1` and unfilled
+vertices start at `0`. Eligible filled vertices transmit `alpha * current_weight` to their
+eligible unfilled neighbor each step (same forcing eligibility as zero forcing), and a vertex
+becomes filled once its weight is strictly greater than `beta`. Both `alpha` and `beta` are user
+inputs constrained to `[0, 1]`.
 
 ## Draw Graph Mode
 

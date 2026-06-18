@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import loadable from '@loadable/component'
 import { useTheme } from '@mui/material'
 import { useGraph } from './context'
+import { formatNodeLabel } from '../../lib/forcing'
 
 const ForceGraph2D = loadable(() => import('./force-graph'))
 
@@ -86,7 +87,17 @@ export const Graph = ({ nodes, edges, height, width }) => {
     context.strokeStyle = theme.palette.grey[800]
     context.stroke()
     context.fill()
-  }, [graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes])
+    const weight = graph.nodeWeights.get(id) || 0
+    const labelText = formatNodeLabel(id, weight)
+    context.font = '11px Sans-Serif'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    const textWidth = context.measureText(labelText).width + 8
+    context.fillStyle = theme.palette.background.paper
+    context.fillRect(x - (textWidth / 2), y + graph.settings.nodeSize + 3, textWidth, 14)
+    context.fillStyle = theme.palette.text.primary
+    context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
+  }, [graph.coloredNodes, graph.nodeWeights, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette])
 
   const nodePaint = ({ x, y }, color, context) => {
     context.fillStyle = color
@@ -132,7 +143,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onEngineStop={ graph.manualRedrawActive ? graph.clearManualRedraw : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
-      nodeLabel={ node => `${ node.id }` }
+      nodeLabel={ node => formatNodeLabel(node.id, graph.nodeWeights.get(node.id) || 0) }
       autoPauseRedraw={ false }
       cooldownTicks={ (graph.settings.autoRedraw || graph.manualRedrawActive) ? Infinity : 0 }
     />

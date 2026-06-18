@@ -17,12 +17,27 @@ export const Instructions = () => {
           all nodes adjacent to the clicked node.
         </Typography>
         <Typography paragraph>
+          Use the forcing mode buttons in the bottom control bar to switch between
+          <Typography color="primary" component="span"> Zero Forcing</Typography>,
+          <Typography color="primary" component="span"> PSD Zero Forcing</Typography>, and
+          <Typography color="primary" component="span"> Transmission Forcing</Typography>.
+          The selected mode is highlighted.
+        </Typography>
+        <Typography paragraph>
           The <Typography color="primary" component="span">STEP</Typography> button
-          invokes one application of the coloring rule.
+          invokes one application of the currently selected coloring rule.
           Checking to see if a zero forcing set has been found amounts to
           coloring the initial node set and clicking <Typography color="primary"
           component="span">STEP</Typography> to see whether it does indeed force
           the whole graph to become colored.
+        </Typography>
+        <Typography paragraph>
+          In Transmission Forcing mode, each initially filled node starts with weight 1.
+          Unfilled nodes start with weight 0. A forcing transmission contributes
+          <Typography color="primary" component="span"> α × (transmitter weight)</Typography>
+          to an eligible unfilled neighbor, and a node becomes filled only when its
+          weight is strictly greater than <Typography color="primary" component="span">β</Typography>.
+          The α and β controls accept values in [0, 1].
         </Typography>
         <Typography paragraph>
           The <Typography color="primary" component="span">Step Back</Typography> button

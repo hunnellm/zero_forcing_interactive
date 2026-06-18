@@ -3,6 +3,12 @@ import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
 import { addNodeToMatrix, addEdgeToMatrix } from '../../lib/matrix-utils'
+import {
+  FORCING_MODES,
+  clampParameter,
+  initialWeights,
+  runForcingStep,
+} from '../../lib/forcing'
 
 const initialGraph = [
   [0, 1, 0, 0, 0, 0, 0, 0, 1],
@@ -33,8 +39,12 @@ export const GraphProvider = ({ children }) => {
   const [color, setColor] = useLocalStorage('node-color', '#a14f92')
   const [nodeSize, setNodeSize] = useLocalStorage('node-size', 4)
   const [autoRedraw, setAutoRedraw] = useLocalStorage('auto-redraw', true)
+  const [forcingMode, setForcingMode] = useLocalStorage('forcing-mode', FORCING_MODES.ZERO)
+  const [alpha, setAlphaState] = useLocalStorage('transmission-alpha', 0.5)
+  const [beta, setBetaState] = useLocalStorage('transmission-beta', 0.5)
   const [drawMode, setDrawMode] = useState(false)
   const [manualRedrawActive, setManualRedrawActive] = useState(false)
+  const [nodeWeights, setNodeWeights] = useState(() => initialWeights(initialGraph.length, new Set()))
   
   useEffect(() => {
     setNodes(prev => {
@@ -52,6 +62,34 @@ export const GraphProvider = ({ children }) => {
     setEdges(_edges)
   }, [adjacencyMatrix])
 
+  useEffect(() => {
+    setNodeWeights(prevWeights => {
+      const nextWeights = new Map()
+      for (let i = 0; i < adjacencyMatrix.rows; i += 1) {
+        const defaultWeight = coloredNodes.has(i) ? 1 : 0
+        nextWeights.set(i, prevWeights.has(i) ? prevWeights.get(i) : defaultWeight)
+      }
+      return nextWeights
+    })
+  }, [adjacencyMatrix, coloredNodes])
+
+  useEffect(() => {
+    setColorHistory([])
+    if (forcingMode !== FORCING_MODES.TRANSMISSION) {
+      setNodeWeights(initialWeights(adjacencyMatrix.rows, coloredNodes))
+      return
+    }
+
+    setNodeWeights(prevWeights => {
+      const nextWeights = new Map()
+      for (let i = 0; i < adjacencyMatrix.rows; i += 1) {
+        const currentWeight = prevWeights.get(i) || 0
+        nextWeights.set(i, coloredNodes.has(i) ? Math.max(1, currentWeight) : currentWeight)
+      }
+      return nextWeights
+    })
+  }, [forcingMode])
+
   const toggleNodeColor = useCallback(i => {
     if (coloredNodes.has(i)) {
       uncolorNode(i)
@@ -63,16 +101,40 @@ export const GraphProvider = ({ children }) => {
   const toggleNeighborhoodColor = useCallback(id => {
     const _coloredNodes = new Set([...coloredNodes])
     if (_coloredNodes.has(id)) {
-      [...neighbors(id)].forEach(i => _coloredNodes.delete(i))
+      [...neighbors(id)].forEach(i => {
+        _coloredNodes.delete(i)
+      })
       setColoredNodes(new Set(_coloredNodes))
+      if (forcingMode === FORCING_MODES.TRANSMISSION) {
+        setNodeWeights(prevWeights => {
+          const nextWeights = new Map(prevWeights)
+          ;[...neighbors(id)].forEach(i => nextWeights.set(i, 0))
+          return nextWeights
+        })
+      }
       return
     }
-    setColoredNodes(new Set([...coloredNodes, id, ...neighbors(id)]))
-  }, [coloredNodes])
+    const nextColoredNodes = new Set([...coloredNodes, id, ...neighbors(id)])
+    setColoredNodes(nextColoredNodes)
+    if (forcingMode === FORCING_MODES.TRANSMISSION) {
+      setNodeWeights(prevWeights => {
+        const nextWeights = new Map(prevWeights)
+        ;[...nextColoredNodes].forEach(i => nextWeights.set(i, Math.max(1, nextWeights.get(i) || 0)))
+        return nextWeights
+      })
+    }
+  }, [coloredNodes, neighbors, forcingMode])
 
   const colorNode = useCallback(i => {
     setColoredNodes(new Set([...coloredNodes, i]))
-  }, [coloredNodes])
+    if (forcingMode === FORCING_MODES.TRANSMISSION) {
+      setNodeWeights(prevWeights => {
+        const nextWeights = new Map(prevWeights)
+        nextWeights.set(i, Math.max(1, nextWeights.get(i) || 0))
+        return nextWeights
+      })
+    }
+  }, [coloredNodes, forcingMode])
 
   const uncolorNode = useCallback(i => {
     let _coloredNodes = new Set([...coloredNodes])
@@ -80,11 +142,19 @@ export const GraphProvider = ({ children }) => {
       _coloredNodes.delete(i)
     }
     setColoredNodes(_coloredNodes)
-  }, [coloredNodes])
+    if (forcingMode === FORCING_MODES.TRANSMISSION) {
+      setNodeWeights(prevWeights => {
+        const nextWeights = new Map(prevWeights)
+        nextWeights.set(i, 0)
+        return nextWeights
+      })
+    }
+  }, [coloredNodes, forcingMode])
 
   const uncolorAllNodes = () => {
     setColorHistory([])
     setColoredNodes(new Set())
+    setNodeWeights(initialWeights(adjacencyMatrix.rows, new Set()))
   }
 
   const neighbors = useCallback(i => {
@@ -95,25 +165,43 @@ export const GraphProvider = ({ children }) => {
       }
     })
     return neighbors
-  }, [coloredNodes])
+  }, [adjacencyMatrix])
+
+  const setTransmissionAlpha = useCallback(value => {
+    setAlphaState(clampParameter(value, 0.5))
+  }, [])
+
+  const setTransmissionBeta = useCallback(value => {
+    setBetaState(clampParameter(value, 0.5))
+  }, [])
+
+  const setMode = useCallback(mode => {
+    setForcingMode(mode)
+  }, [])
 
   const colorStep = useCallback(() => {
-    setColorHistory(prev => [...prev, new Set(coloredNodes)])
-    const nextColoredNodes = new Set();
-    [...coloredNodes].forEach(i => {
-      const uncoloredNeighbors = [...neighbors(i)].filter(i =>  !coloredNodes.has(i))
-      if (uncoloredNeighbors.length === 1) {
-        nextColoredNodes.add(uncoloredNeighbors[0])
-      }
+    setColorHistory(prev => [...prev, {
+      coloredNodes: new Set(coloredNodes),
+      nodeWeights: new Map(nodeWeights),
+    }])
+    const stepResult = runForcingStep({
+      mode: forcingMode,
+      adjacencyData: adjacencyMatrix.data,
+      coloredNodes,
+      nodeWeights,
+      alpha,
+      beta,
     })
-    setColoredNodes(new Set([...coloredNodes, ...nextColoredNodes]))
-  }, [coloredNodes])
+    setColoredNodes(stepResult.coloredNodes)
+    setNodeWeights(stepResult.nodeWeights)
+  }, [adjacencyMatrix, coloredNodes, nodeWeights, forcingMode, alpha, beta])
 
   const stepBack = useCallback(() => {
     if (colorHistory.length === 0) return
     const prev = colorHistory[colorHistory.length - 1]
     setColorHistory(h => h.slice(0, -1))
-    setColoredNodes(new Set(prev))
+    setColoredNodes(new Set(prev.coloredNodes))
+    setNodeWeights(new Map(prev.nodeWeights))
   }, [colorHistory])
 
   const toggleDrawMode = useCallback(() => setDrawMode(d => !d), [])
@@ -143,6 +231,7 @@ export const GraphProvider = ({ children }) => {
         setMatrix,
         colorNode,
         coloredNodes,
+        nodeWeights,
         toggleNodeColor,
         toggleNeighborhoodColor,
         uncolorAllNodes,
@@ -154,6 +243,15 @@ export const GraphProvider = ({ children }) => {
         manualRedrawActive,
         triggerManualRedraw,
         clearManualRedraw,
+        forcing: {
+          modes: FORCING_MODES,
+          mode: forcingMode,
+          setMode,
+          alpha,
+          beta,
+          setAlpha: setTransmissionAlpha,
+          setBeta: setTransmissionBeta,
+        },
         settings: {
           color,
           setColor,

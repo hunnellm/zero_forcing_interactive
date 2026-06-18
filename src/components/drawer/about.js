@@ -1,5 +1,4 @@
-import { Box, Divider, Stack, Tooltip, Typography } from '@mui/material'
-import { GitHub as GitHubIcon } from '@mui/icons-material'
+import { Box, Divider, Stack, Typography } from '@mui/material'
 
 export const About = () => {
   return (
@@ -28,6 +27,11 @@ export const About = () => {
           which a coloring rule is applied. Our coloring rule says that, given
           a set of filled vertices, any filled vertex with a single unfilled
           neighbor causes that neighbor to become filled. This is called a force.
+        </Typography>
+        <Typography paragraph>
+          The application supports classical zero forcing, PSD zero forcing, and
+          a transmission forcing variant with weighted updates controlled by
+          user-selected transmission parameters α and β.
         </Typography>
         <Typography paragraph>
           A <strong>zero forcing set</strong> is a set of initially colored vertices which,
