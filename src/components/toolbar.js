@@ -1,10 +1,11 @@
 import PropTypes from 'prop-types'
-import { AppBar, IconButton, Stack, Tooltip, useTheme } from '@mui/material'
+import { AppBar, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 import {
   Close as CloseDrawerIcon,
   Settings as SettingsIcon,
   Download as DownloadIcon,
   Edit as DrawIcon,
+  Label as LabelIcon,
   Refresh as RedrawIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
@@ -31,15 +32,23 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
   return (
     <AppBar sx={{ backgroundColor: theme.palette.background.paper, zIndex: 2 }}>
       <Stack
-        spacing={ 1 }
         direction="row"
         alignItems="center"
-        justifyContent="flex-end"
+        justifyContent="space-between"
         sx={{
           padding: '1.5rem 1rem',
           position: 'relative',
         }}
       >
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ color: theme.palette.text.primary, fontWeight: 700, letterSpacing: '0.05em' }}
+        >
+          Graph Zero Forcing
+        </Typography>
+
+        <Stack spacing={ 1 } direction="row" alignItems="center">
         <Tooltip title={ graph.drawMode ? 'Exit Draw Mode' : 'Draw Graph Mode' } placement="bottom">
           <IconButton
             size="small"
@@ -76,6 +85,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           ><DownloadIcon /></IconButton>
         </Tooltip>
 
+        <Tooltip title={ graph.settings.showLabels ? 'Hide Vertex Labels' : 'Show Vertex Labels' } placement="bottom">
+          <IconButton
+            size="small"
+            onClick={ graph.settings.toggleShowLabels }
+            sx={{
+              color: graph.settings.showLabels ? theme.palette.primary.main : theme.palette.text.primary,
+              transition: 'color 250ms',
+              '&:hover': { color: theme.palette.primary.main }
+            }}
+          ><LabelIcon /></IconButton>
+        </Tooltip>
+
         <Tooltip title="View Settings" placement="bottom">
           <IconButton
             size="small"
@@ -83,6 +104,7 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
             sx={{ color: drawerOpen ? theme.palette.primary.main : theme.palette.text.primary }}
           >{ drawerOpen ? <CloseDrawerIcon /> : <SettingsIcon /> }</IconButton>
         </Tooltip>
+        </Stack>
       </Stack>
     </AppBar>
   )
