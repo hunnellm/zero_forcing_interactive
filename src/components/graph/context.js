@@ -45,6 +45,7 @@ export const GraphProvider = ({ children }) => {
   const [drawMode, setDrawMode] = useState(false)
   const [manualRedrawActive, setManualRedrawActive] = useState(false)
   const [nodeWeights, setNodeWeights] = useState(() => initialWeights(initialGraph.length, new Set()))
+  const [usedTransmissions, setUsedTransmissions] = useState(() => new Set())
   const [showLabels, setShowLabels] = useState(false)
   
   useEffect(() => {
@@ -76,6 +77,7 @@ export const GraphProvider = ({ children }) => {
 
   useEffect(() => {
     setColorHistory([])
+    setUsedTransmissions(new Set())
     if (forcingMode !== FORCING_MODES.TRANSMISSION) {
       setNodeWeights(initialWeights(adjacencyMatrix.rows, coloredNodes))
       setShowLabels(false)
@@ -156,6 +158,7 @@ export const GraphProvider = ({ children }) => {
     setColorHistory([])
     setColoredNodes(new Set())
     setNodeWeights(initialWeights(adjacencyMatrix.rows, new Set()))
+    setUsedTransmissions(new Set())
   }
 
   const neighbors = useCallback(i => {
@@ -184,6 +187,7 @@ export const GraphProvider = ({ children }) => {
     setColorHistory(prev => [...prev, {
       coloredNodes: new Set(coloredNodes),
       nodeWeights: new Map(nodeWeights),
+      usedTransmissions: new Set(usedTransmissions),
     }])
     const stepResult = runForcingStep({
       mode: forcingMode,
@@ -192,10 +196,14 @@ export const GraphProvider = ({ children }) => {
       nodeWeights,
       alpha,
       beta,
+      usedTransmissions,
     })
     setColoredNodes(stepResult.coloredNodes)
     setNodeWeights(stepResult.nodeWeights)
-  }, [adjacencyMatrix, coloredNodes, nodeWeights, forcingMode, alpha, beta])
+    if (stepResult.usedTransmissions) {
+      setUsedTransmissions(stepResult.usedTransmissions)
+    }
+  }, [adjacencyMatrix, coloredNodes, nodeWeights, usedTransmissions, forcingMode, alpha, beta])
 
   const stepBack = useCallback(() => {
     if (colorHistory.length === 0) return
@@ -203,6 +211,7 @@ export const GraphProvider = ({ children }) => {
     setColorHistory(h => h.slice(0, -1))
     setColoredNodes(new Set(prev.coloredNodes))
     setNodeWeights(new Map(prev.nodeWeights))
+    setUsedTransmissions(new Set(prev.usedTransmissions || []))
   }, [colorHistory])
 
   const toggleDrawMode = useCallback(() => setDrawMode(d => !d), [])
