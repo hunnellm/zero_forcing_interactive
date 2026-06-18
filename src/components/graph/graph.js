@@ -14,6 +14,8 @@ export const Graph = ({ nodes, edges, height, width }) => {
   const [highlightedNodes, setHighlightedNodes] = useState(new Set())
   // In draw mode: the first selected node for edge creation (or null)
   const [drawSrcNode, setDrawSrcNode] = useState(null)
+  // Track last click for double-click detection in draw mode
+  const lastClickRef = useRef({ nodeId: null, time: 0 })
 
   // Clear draw selection when leaving draw mode
   useEffect(() => {
@@ -46,6 +48,19 @@ export const Graph = ({ nodes, edges, height, width }) => {
 
   const handleClickNode = useCallback((node, event) => {
     if (graph.drawMode) {
+      const now = Date.now()
+      const isDoubleClick =
+        lastClickRef.current.nodeId === node.id &&
+        now - lastClickRef.current.time < 300
+      lastClickRef.current = { nodeId: node.id, time: now }
+
+      if (isDoubleClick) {
+        lastClickRef.current = { nodeId: null, time: 0 }
+        setDrawSrcNode(null)
+        graph.removeNode(node.id)
+        return
+      }
+
       if (drawSrcNode === null) {
         // Select this node as edge source
         setDrawSrcNode(node.id)
@@ -64,7 +79,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       return
     }
     graph.toggleNodeColor(node.id)
-  }, [graph.coloredNodes, graph.drawMode, graph.addEdge, drawSrcNode])
+  }, [graph.coloredNodes, graph.drawMode, graph.addEdge, graph.removeNode, drawSrcNode])
 
   const handleBackgroundClick = useCallback(() => {
     if (!graph.drawMode) return
@@ -87,16 +102,18 @@ export const Graph = ({ nodes, edges, height, width }) => {
     context.strokeStyle = theme.palette.grey[800]
     context.stroke()
     context.fill()
-    const weight = graph.nodeWeights.get(id) || 0
-    const labelText = formatNodeLabel(id, weight)
-    context.font = '11px Sans-Serif'
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    const textWidth = context.measureText(labelText).width + 8
-    context.fillStyle = theme.palette.background.paper
-    context.fillRect(x - (textWidth / 2), y + graph.settings.nodeSize + 3, textWidth, 14)
-    context.fillStyle = theme.palette.text.primary
-    context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
+    if (graph.settings.showLabels) {
+      const weight = graph.nodeWeights.get(id) || 0
+      const labelText = formatNodeLabel(id, weight)
+      context.font = '11px Sans-Serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      const textWidth = context.measureText(labelText).width + 8
+      context.fillStyle = theme.palette.background.paper
+      context.fillRect(x - (textWidth / 2), y + graph.settings.nodeSize + 3, textWidth, 14)
+      context.fillStyle = theme.palette.text.primary
+      context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
+    }
   }, [graph.coloredNodes, graph.nodeWeights, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette])
 
   const nodePaint = ({ x, y }, color, context) => {
@@ -143,7 +160,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onEngineStop={ graph.manualRedrawActive ? graph.clearManualRedraw : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
-      nodeLabel={ node => formatNodeLabel(node.id, graph.nodeWeights.get(node.id) || 0) }
+      nodeLabel={ node => graph.settings.showLabels ? formatNodeLabel(node.id, graph.nodeWeights.get(node.id) || 0) : '' }
       autoPauseRedraw={ false }
       cooldownTicks={ (graph.settings.autoRedraw || graph.manualRedrawActive) ? Infinity : 0 }
     />

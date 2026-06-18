@@ -90,6 +90,19 @@ export const SettingsForm = () => {
         </FormControl>
 
         <FormControl sx={{ flexDirection: 'row', gap: '2rem' }}>
+          <FormLabel color="primary">Vertex Labels</FormLabel>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={ graph.settings.showLabels }
+                onChange={ graph.settings.toggleShowLabels }
+              />
+            }
+            label={ graph.settings.showLabels ? 'On' : 'Off' }
+          />
+        </FormControl>
+
+        <FormControl sx={{ flexDirection: 'row', gap: '2rem' }}>
           <FormLabel color="primary">Node Size</FormLabel>
           <Slider
             aria-label="Node size"

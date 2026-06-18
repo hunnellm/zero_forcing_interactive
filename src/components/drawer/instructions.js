@@ -65,6 +65,7 @@ export const Instructions = () => {
           <li>Click a node to select it as an edge source (it will be highlighted).</li>
           <li>Click a second node to draw an edge between the two nodes.</li>
           <li>Click the selected node again to deselect it.</li>
+          <li>Double-click a node to delete it and all its incident edges.</li>
         </Typography>
         <Typography paragraph sx={{ mt: 1 }}>
           Click the pencil icon again to exit Draw mode and return to coloring interaction.
