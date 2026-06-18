@@ -37,7 +37,7 @@ export const Instructions = () => {
           <Typography color="primary" component="span"> α × (transmitter weight)</Typography>
           to an eligible unfilled neighbor, and a node becomes filled only when its
           weight is strictly greater than <Typography color="primary" component="span">β</Typography>.
-          The α and β controls accept values in [0, 1].
+          The α and β controls accept values in [0, 1]. They are trimmed to 0 or 1 if a value outside this range is given.
         </Typography>
         <Typography paragraph>
           The <Typography color="primary" component="span">Step Back</Typography> button
