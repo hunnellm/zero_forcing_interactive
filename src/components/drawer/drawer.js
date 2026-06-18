@@ -19,7 +19,7 @@ const tabs = [
   },
   {
     id: 'matrix',
-    label: 'Draw Graph',
+    label: 'Generate Graph',
     Component: MatrixEditor
   },
   {
