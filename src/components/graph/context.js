@@ -37,7 +37,10 @@ export const GraphProvider = ({ children }) => {
   const [manualRedrawActive, setManualRedrawActive] = useState(false)
   
   useEffect(() => {
-    setNodes([...Array(adjacencyMatrix.rows).keys()].map(i => ({ id: i })))
+    setNodes(prev => {
+      const prevMap = new Map(prev.map(n => [n.id, n]))
+      return [...Array(adjacencyMatrix.rows).keys()].map(i => prevMap.get(i) || { id: i })
+    })
     let _edges = []
     adjacencyMatrix.data.forEach((row, i) => {
       for (let j = 0; j < i; j += 1) {
