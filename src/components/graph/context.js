@@ -224,11 +224,25 @@ export const GraphProvider = ({ children }) => {
 
   const clearManualRedraw = useCallback(() => setManualRedrawActive(false), [])
 
-  const addNode = useCallback(() => {
-    setMatrix(addNodeToMatrix(matrix))
-    setColorHistory([])
-    setColoredNodes(new Set())
-  }, [matrix])
+ const addNode = useCallback((position = null) => {
+  const nextId = matrix.length
+  setMatrix(addNodeToMatrix(matrix))
+  setColorHistory([])
+  setColoredNodes(new Set())
+
+  if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+    setNodes(prev => [
+      ...prev,
+      {
+        id: nextId,
+        x: position.x,
+        y: position.y,
+        fx: position.x,
+        fy: position.y,
+      },
+    ])
+  }
+}, [matrix])
 
   const removeNode = useCallback(nodeId => {
     setMatrix(removeNodeFromMatrix(matrix, nodeId))
