@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import loadable from '@loadable/component'
 import { useTheme } from '@mui/material'
 import { useGraph } from './context'
-import { formatNodeLabel } from '../../lib/forcing'
+import { FORCING_MODES, formatNodeLabel } from '../../lib/forcing'
 
 const ForceGraph2D = loadable(() => import('./force-graph'))
 
@@ -86,6 +86,13 @@ export const Graph = ({ nodes, edges, height, width }) => {
     graph.addNode()
   }, [graph.drawMode, graph.addNode])
 
+  const getNodeLabelText = useCallback(id => {
+    const hideWeight = graph.forcing.mode === FORCING_MODES.ZERO || graph.forcing.mode === FORCING_MODES.PSD
+    if (hideWeight) return `${id}`
+    const weight = graph.nodeWeights.get(id) || 0
+    return formatNodeLabel(id, weight)
+  }, [graph.forcing.mode, graph.nodeWeights])
+
   const nodeCanvasObject = useCallback(({ x, y, id }, context) => {
     if (graph.drawMode && drawSrcNode === id) {
       // Draw a distinct selection ring in draw mode
@@ -103,8 +110,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
     context.stroke()
     context.fill()
     if (graph.settings.showLabels) {
-      const weight = graph.nodeWeights.get(id) || 0
-      const labelText = formatNodeLabel(id, weight)
+      const labelText = getNodeLabelText(id)
       context.font = '11px Sans-Serif'
       context.textAlign = 'center'
       context.textBaseline = 'middle'
@@ -114,7 +120,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       context.fillStyle = theme.palette.text.primary
       context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
     }
-  }, [graph.coloredNodes, graph.nodeWeights, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette])
+  }, [graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette, getNodeLabelText])
 
   const nodePaint = ({ x, y }, color, context) => {
     context.fillStyle = color
@@ -160,7 +166,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onEngineStop={ graph.manualRedrawActive ? graph.clearManualRedraw : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
-      nodeLabel={ node => graph.settings.showLabels ? formatNodeLabel(node.id, graph.nodeWeights.get(node.id) || 0) : '' }
+      nodeLabel={ node => graph.settings.showLabels ? getNodeLabelText(node.id) : '' }
       autoPauseRedraw={ false }
       cooldownTicks={ (!graph.drawMode && (graph.settings.autoRedraw || graph.manualRedrawActive)) ? Infinity : 0 }
     />
