@@ -38,7 +38,7 @@ export const GraphProvider = ({ children }) => {
   const [colorHistory, setColorHistory] = useState([])
   const [color, setColor] = useLocalStorage('node-color', '#a14f92')
   const [nodeSize, setNodeSize] = useLocalStorage('node-size', 4)
-  const [autoRedraw, setAutoRedraw] = useLocalStorage('auto-redraw', true)
+  const [autoRedraw, setAutoRedraw] = useLocalStorage('auto-redraw', false)
   const [forcingMode, setForcingMode] = useLocalStorage('forcing-mode', FORCING_MODES.ZERO)
   const [alpha, setAlphaState] = useLocalStorage('transmission-alpha', 0.5)
   const [beta, setBetaState] = useLocalStorage('transmission-beta', 0.5)
@@ -89,7 +89,7 @@ export const GraphProvider = ({ children }) => {
       const nextWeights = new Map()
       for (let i = 0; i < adjacencyMatrix.rows; i += 1) {
         const currentWeight = prevWeights.get(i) || 0
-        nextWeights.set(i, coloredNodes.has(i) ? Math.max(1, currentWeight) : currentWeight)
+        nextWeights.set(i, coloredNodes.has(i) ? Math.max( currentWeight) : currentWeight)
       }
       return nextWeights
     })
@@ -123,7 +123,7 @@ export const GraphProvider = ({ children }) => {
       const nextWeights = new Map(prevWeights)
       ;[...nextColoredNodes].forEach(i => {
         nextWeights.set(i, forcingMode === FORCING_MODES.TRANSMISSION
-          ? Math.max(1, nextWeights.get(i) || 0)
+          ? Math.max( nextWeights.get(i) || 0)
           : 1)
       })
       return nextWeights
@@ -135,7 +135,7 @@ export const GraphProvider = ({ children }) => {
     setNodeWeights(prevWeights => {
       const nextWeights = new Map(prevWeights)
       nextWeights.set(i, forcingMode === FORCING_MODES.TRANSMISSION
-        ? Math.max(1, nextWeights.get(i) || 0)
+        ? Math.max( nextWeights.get(i) || 0)
         : 1)
       return nextWeights
     })
