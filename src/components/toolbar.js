@@ -48,6 +48,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           Visualizing Variants of Zero Forcing Processes
         </Typography>
 
+        <Typography
+          variant="body2"
+          sx={{
+            fontFamily: 'monospace',
+            color: theme.palette.text.secondary,
+            letterSpacing: '0.05em',
+            userSelect: 'all',
+          }}
+        >
+          graph6: { graph.graph6String }
+        </Typography>
+
         <Stack spacing={ 1 } direction="row" alignItems="center">
         <Tooltip title={ graph.drawMode ? 'Exit Draw Mode' : 'Draw Graph Mode' } placement="bottom">
           <IconButton

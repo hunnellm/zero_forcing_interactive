@@ -1,5 +1,46 @@
 const GRAPH6_HEADER = '>>graph6<<'
 
+const encodeGraph6Value = value => String.fromCharCode(value + 63)
+
+const encodeGraphOrder = n => {
+  if (n <= 62) {
+    return encodeGraph6Value(n)
+  }
+  if (n <= 258047) {
+    return encodeGraph6Value(63) +
+      encodeGraph6Value((n >> 12) & 63) +
+      encodeGraph6Value((n >> 6) & 63) +
+      encodeGraph6Value(n & 63)
+  }
+  return encodeGraph6Value(63) + encodeGraph6Value(63) +
+    encodeGraph6Value((n >> 30) & 63) +
+    encodeGraph6Value((n >> 24) & 63) +
+    encodeGraph6Value((n >> 18) & 63) +
+    encodeGraph6Value((n >> 12) & 63) +
+    encodeGraph6Value((n >> 6) & 63) +
+    encodeGraph6Value(n & 63)
+}
+
+export const encodeGraph6 = matrix => {
+  const order = matrix.length
+  const bits = []
+  for (let i = 0; i < order; i += 1) {
+    for (let j = i + 1; j < order; j += 1) {
+      bits.push(matrix[i][j] ? 1 : 0)
+    }
+  }
+  while (bits.length % 6 !== 0) {
+    bits.push(0)
+  }
+  let dataStr = ''
+  for (let k = 0; k < bits.length; k += 6) {
+    const value = (bits[k] << 5) | (bits[k + 1] << 4) | (bits[k + 2] << 3) |
+      (bits[k + 3] << 2) | (bits[k + 4] << 1) | bits[k + 5]
+    dataStr += encodeGraph6Value(value)
+  }
+  return encodeGraphOrder(order) + dataStr
+}
+
 const decodeGraph6Value = char => {
   const code = char.charCodeAt(0)
   if (Number.isNaN(code) || code < 63 || code > 126) {
