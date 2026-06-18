@@ -31,6 +31,7 @@ Click the **pencil icon (✏)** in the toolbar to enter Draw Graph mode.
 - Click a node to select it as an edge source (highlighted with a secondary-colour ring).
 - Click a second node to connect them with an edge.
 - Click the selected source node again to cancel the selection.
+- **Double-click a node** to delete it and all its incident edges.
 
 Click the pencil icon again to return to normal coloring interaction.
 
@@ -67,4 +68,4 @@ npm test
 
 Tests cover:
 - `src/lib/graph6.test.js` — graph6 string parser
-- `src/lib/matrix-utils.test.js` — adjacency-matrix mutation helpers (`addNodeToMatrix`, `addEdgeToMatrix`)
+- `src/lib/matrix-utils.test.js` — adjacency-matrix mutation helpers (`addNodeToMatrix`, `addEdgeToMatrix`, `removeNodeFromMatrix`)

@@ -56,7 +56,7 @@ export const Colorbar = () => {
         ...conditionalStyles,
       }}>
         <Typography color="text.secondary" variant="body2">
-          Draw mode: click the canvas to add a node · click a node then another to add an edge
+          Draw mode: click the canvas to add a node · click a node then another to add an edge · double-click a node to delete it
         </Typography>
       </Box>
     )

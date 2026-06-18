@@ -28,3 +28,17 @@ export const addEdgeToMatrix = (matrix, src, tgt) => {
   newMatrix[tgt][src] = 1
   return newMatrix
 }
+
+/**
+ * Returns a new matrix with the node at nodeIndex removed.
+ * The node's row and column are deleted; remaining indices shift down.
+ *
+ * @param {number[][]} matrix - square symmetric adjacency matrix
+ * @param {number} nodeIndex - index of the node to remove
+ * @returns {number[][]} new matrix of size (n-1) x (n-1)
+ */
+export const removeNodeFromMatrix = (matrix, nodeIndex) => {
+  return matrix
+    .filter((_, i) => i !== nodeIndex)
+    .map(row => row.filter((_, j) => j !== nodeIndex))
+}
