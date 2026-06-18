@@ -99,4 +99,28 @@ assert.strictEqual(clampParameter(-1, 0.5), 0)
 assert.strictEqual(clampParameter(2, 0.5), 1)
 assert.strictEqual(clampParameter('bad', 0.25), 0.25)
 
+// Each source->target transmission pair may be used at most once per run
+const firstTransmissionResult = runForcingStep({
+  mode: FORCING_MODES.TRANSMISSION,
+  adjacencyData: pathGraph,
+  coloredNodes: new Set([0]),
+  nodeWeights: new Map([[0, 1], [1, 0], [2, 0]]),
+  alpha: 0.5,
+  beta: 0.9,
+})
+assert.strictEqual(firstTransmissionResult.nodeWeights.get(1), 0.5, 'First step should apply transmission')
+assert.ok(firstTransmissionResult.usedTransmissions instanceof Set, 'Result should include usedTransmissions Set')
+assert.ok(firstTransmissionResult.usedTransmissions.has('0->1'), 'Used transmissions should record 0->1')
+
+const secondTransmissionResult = runForcingStep({
+  mode: FORCING_MODES.TRANSMISSION,
+  adjacencyData: pathGraph,
+  coloredNodes: new Set([0]),
+  nodeWeights: firstTransmissionResult.nodeWeights,
+  alpha: 0.5,
+  beta: 0.9,
+  usedTransmissions: firstTransmissionResult.usedTransmissions,
+})
+assert.strictEqual(secondTransmissionResult.nodeWeights.get(1), 0.5, 'Second step should not re-apply already-used transmission')
+
 console.log('forcing logic tests passed')

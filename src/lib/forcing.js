@@ -111,6 +111,7 @@ export const runForcingStep = ({
   nodeWeights,
   alpha,
   beta,
+  usedTransmissions = new Set(),
 }) => {
   const neighborMap = buildNeighborMap(adjacencyData)
 
@@ -125,11 +126,17 @@ export const runForcingStep = ({
   if (mode === FORCING_MODES.TRANSMISSION) {
     const nextWeights = new Map(nodeWeights)
     const nextColoredNodes = new Set(coloredNodes)
+    const nextUsedTransmissions = new Set(usedTransmissions)
     const receivers = getTransmissionReceivers(coloredNodes, neighborMap)
 
     receivers.forEach((transmitters, receiver) => {
       const transmittedWeight = transmitters.reduce(
-        (sum, transmitter) => sum + (alpha * (nodeWeights.get(transmitter) || 0)),
+        (sum, transmitter) => {
+          const key = `${transmitter}->${receiver}`
+          if (nextUsedTransmissions.has(key)) return sum
+          nextUsedTransmissions.add(key)
+          return sum + (alpha * (nodeWeights.get(transmitter) || 0))
+        },
         0,
       )
       const updatedWeight = (nextWeights.get(receiver) || 0) + transmittedWeight
@@ -142,6 +149,7 @@ export const runForcingStep = ({
     return {
       coloredNodes: nextColoredNodes,
       nodeWeights: nextWeights,
+      usedTransmissions: nextUsedTransmissions,
     }
   }
 
