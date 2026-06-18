@@ -162,7 +162,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       linkWidth={ 2 }
       nodeLabel={ node => graph.settings.showLabels ? formatNodeLabel(node.id, graph.nodeWeights.get(node.id) || 0) : '' }
       autoPauseRedraw={ false }
-      cooldownTicks={ (graph.settings.autoRedraw || graph.manualRedrawActive) ? Infinity : 0 }
+      cooldownTicks={ (!graph.drawMode && (graph.settings.autoRedraw || graph.manualRedrawActive)) ? Infinity : 0 }
     />
   )
 }
