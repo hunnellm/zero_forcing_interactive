@@ -110,16 +110,30 @@ export const Graph = ({ nodes, edges, height, width }) => {
     context.stroke()
     context.fill()
     if (graph.settings.showLabels) {
-      const labelText = getNodeLabelText(id)
-      context.font = '11px Sans-Serif'
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      const textWidth = context.measureText(labelText).width + 8
-      context.fillStyle = theme.palette.background.paper
-      context.fillRect(x - (textWidth / 2), y + graph.settings.nodeSize + 3, textWidth, 14)
-      context.fillStyle = theme.palette.text.primary
-      context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
-    }
+  const labelText = getNodeLabelText(id)
+  context.font = '11px Sans-Serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  
+  const textWidth = context.measureText(labelText).width + 8
+
+  // Save previous canvas state so changes don't bleed into other nodes
+  context.save() 
+  
+  // Set desired opacity for the label (e.g., 0.5 for 50% opacity)
+  context.globalAlpha = 0.5 
+
+  // Draw background box
+  context.fillStyle = theme.palette.background.paper
+  context.fillRect(x - (textWidth / 2), y + graph.settings.nodeSize + 3, textWidth, 14)
+
+  // Draw label text
+  context.fillStyle = theme.palette.text.primary
+  context.fillText(labelText, x, y + graph.settings.nodeSize + 10)
+
+  // Restore canvas alpha state back to 1.0 for the next items
+  context.restore() 
+}
   }, [graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette, getNodeLabelText])
 
   const nodePaint = ({ x, y }, color, context) => {
