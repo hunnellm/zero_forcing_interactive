@@ -8,17 +8,17 @@ const encodeGraphOrder = n => {
   }
   if (n <= 258047) {
     return encodeGraph6Value(63) +
-      encodeGraph6Value((n >> 12) & 63) +
-      encodeGraph6Value((n >> 6) & 63) +
-      encodeGraph6Value(n & 63)
+      encodeGraph6Value(Math.floor(n / 64 ** 2) % 64) +
+      encodeGraph6Value(Math.floor(n / 64) % 64) +
+      encodeGraph6Value(n % 64)
   }
   return encodeGraph6Value(63) + encodeGraph6Value(63) +
-    encodeGraph6Value((n >> 30) & 63) +
-    encodeGraph6Value((n >> 24) & 63) +
-    encodeGraph6Value((n >> 18) & 63) +
-    encodeGraph6Value((n >> 12) & 63) +
-    encodeGraph6Value((n >> 6) & 63) +
-    encodeGraph6Value(n & 63)
+    encodeGraph6Value(Math.floor(n / 64 ** 5) % 64) +
+    encodeGraph6Value(Math.floor(n / 64 ** 4) % 64) +
+    encodeGraph6Value(Math.floor(n / 64 ** 3) % 64) +
+    encodeGraph6Value(Math.floor(n / 64 ** 2) % 64) +
+    encodeGraph6Value(Math.floor(n / 64) % 64) +
+    encodeGraph6Value(n % 64)
 }
 
 export const encodeGraph6 = matrix => {
