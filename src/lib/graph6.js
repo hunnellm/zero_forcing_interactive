@@ -24,8 +24,8 @@ const encodeGraphOrder = n => {
 export const encodeGraph6 = matrix => {
   const order = matrix.length
   const bits = []
-  for (let i = 0; i < order; i += 1) {
-    for (let j = i + 1; j < order; j += 1) {
+  for (let j = 1; j < order; j += 1) {
+    for (let i = 0; i < j; i += 1) {
       bits.push(matrix[i][j] ? 1 : 0)
     }
   }
@@ -89,8 +89,8 @@ export const parseGraph6 = input => {
   const matrix = [...Array(order)].map(() => Array(order).fill(0))
 
   let bitIndex = 0
-  for (let i = 0; i < order; i += 1) {
-    for (let j = i + 1; j < order; j += 1) {
+  for (let j = 1; j < order; j += 1) {
+    for (let i = 0; i < j; i += 1) {
       const dataValue = dataValues[Math.floor(bitIndex / 6)]
       const offset = 5 - (bitIndex % 6)
       const edge = (dataValue >> offset) & 1
