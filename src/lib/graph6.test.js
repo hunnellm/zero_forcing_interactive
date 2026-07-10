@@ -16,6 +16,17 @@ new Function('module', 'exports', transformedCode)(moduleObject, moduleObject.ex
 const { parseGraph6, encodeGraph6, __test_encodeGraphOrder } = moduleObject.exports
 
 const decodeGraph6Values = graph6 => graph6.split('').map(char => char.charCodeAt(0) - 63)
+const buildCirculantGraph = (order, steps) => {
+  const matrix = [...Array(order)].map(() => Array(order).fill(0))
+  for (let i = 0; i < order; i += 1) {
+    for (const step of steps) {
+      const j = (i + step) % order
+      matrix[i][j] = 1
+      matrix[j][i] = 1
+    }
+  }
+  return matrix
+}
 
 const oneVertexGraph = parseGraph6('@')
 assert.deepStrictEqual(oneVertexGraph, [[0]])
@@ -49,6 +60,12 @@ assert.strictEqual(encodeGraph6([[0, 0], [0, 0]]), 'A?')
 // round-trip: parse then encode should reproduce the original string
 const dhc = 'Dhc'
 assert.strictEqual(encodeGraph6(parseGraph6(dhc)), dhc)
+
+// regression: graph6 bit ordering must match Sage/standard graph6
+const circulant16Steps138Graph6 = 'OlSggUDOhAaDAD`AgOlAD'
+const circulant16Steps138 = buildCirculantGraph(16, [1, 3, 8])
+assert.deepStrictEqual(parseGraph6(circulant16Steps138Graph6), circulant16Steps138)
+assert.strictEqual(encodeGraph6(circulant16Steps138), circulant16Steps138Graph6)
 
 // order encoding boundaries around single-byte and extended encoding
 for (const order of [62, 63]) {
