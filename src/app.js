@@ -21,25 +21,46 @@ export const App = () => {
     }}>
       <Toolbar drawerOpen={ drawerOpen } toggleDrawer={ toggleDrawer } />
 
-      <Drawer
-        open={ drawerOpen }
-        closeHandler={ toggleDrawer }
-      />
+      <Box sx={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <Box sx={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          position: 'relative',
+        }}>
+          <Box sx={{
+            width: '100%',
+            height: '100%',
+            '& > div': {
+              width: '100%',
+              height: '100%',
+            },
+          }}>
+            <ReactResizeDetector handleWidth handleHeight>
+              {
+                ({ width, height }) => (
+                  <Graph
+                    width={ width ?? 0 }
+                    height={ height ?? 0 }
+                    nodes={ graph.nodes }
+                    edges={ graph.edges }
+                  />
+                )
+              }
+            </ReactResizeDetector>
+          </Box>
 
-      <ReactResizeDetector handleWidth handleheight>
-        {
-          ({ width, height }) => (
-            <Graph
-              width={ width }
-              height={ height }
-              nodes={ graph.nodes }
-              edges={ graph.edges }
-            />
-          )
-        }
-      </ReactResizeDetector>
+          <Colorbar />
+        </Box>
 
-      <Colorbar />
+        <Drawer />
+      </Box>
 
     </Box>
   )

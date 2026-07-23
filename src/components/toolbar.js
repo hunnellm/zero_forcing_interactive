@@ -30,7 +30,7 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
   }
 
   return (
-    <AppBar sx={{ backgroundColor: theme.palette.background.paper, zIndex: 2 }}>
+    <AppBar position="static" sx={{ backgroundColor: theme.palette.background.paper, zIndex: 2 }}>
       <Stack
         direction="row"
         alignItems="center"
@@ -113,6 +113,9 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           <IconButton
             size="small"
             onClick={ toggleDrawer }
+            aria-label={ drawerOpen ? 'Close options panel' : 'Open options panel' }
+            aria-controls="options-panel"
+            aria-expanded={ drawerOpen }
             sx={{ color: drawerOpen ? theme.palette.primary.main : theme.palette.text.primary }}
           >{ drawerOpen ? <CloseDrawerIcon /> : <SettingsIcon /> }</IconButton>
         </Tooltip>
