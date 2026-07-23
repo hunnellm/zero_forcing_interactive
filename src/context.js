@@ -56,7 +56,9 @@ export const AppProvider = ({ children }) => {
   const [mode, setMode] = useLocalStorage('mode', MODES.light)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const toggleDrawer = () => setDrawerOpen(!drawerOpen)
+  const openDrawer = useCallback(() => setDrawerOpen(true), [])
+  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+  const toggleDrawer = useCallback(() => setDrawerOpen(open => !open), [])
 
   const otherMode = useMemo(() => mode === MODES.light ? MODES.dark : MODES.light, [mode])
 
@@ -71,7 +73,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       compact,
       MODES, mode, setMode, toggleMode, otherMode,
-      drawerOpen, toggleDrawer,
+      drawerOpen, openDrawer, closeDrawer, toggleDrawer,
     }}>
       <ThemeProvider theme={ theme }>
         { children }
