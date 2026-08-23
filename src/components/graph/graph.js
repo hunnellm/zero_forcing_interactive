@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
-import loadable from '@loadable/component'
 import { useTheme } from '@mui/material'
+import ForceGraph2D from './force-graph'
 import { useGraph } from './context'
 import { FORCING_MODES, formatNodeLabel } from '../../lib/forcing'
-
-const ForceGraph2D = loadable(() => import('./force-graph'))
 
 export const Graph = ({ nodes, edges, height, width }) => {
   const theme = useTheme()

@@ -6,6 +6,13 @@ import { Toolbar } from './components/toolbar'
 import { Colorbar } from './components/colorbar'
 import { Drawer } from './components/drawer'
 
+const sanitizeGraphDimension = (value, viewportBound) => {
+  if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(viewportBound) || viewportBound <= 0) {
+    return 0
+  }
+  return Math.min(Math.floor(value), Math.floor(viewportBound))
+}
+
 export const App = () => {
   const theme = useTheme()
   const { graph } = useGraph()
@@ -44,14 +51,28 @@ export const App = () => {
           }}>
             <ReactResizeDetector handleWidth handleHeight>
               {
-                ({ width, height }) => (
-                  <Graph
-                    width={ width ?? 0 }
-                    height={ height ?? 0 }
-                    nodes={ graph.nodes }
-                    edges={ graph.edges }
-                  />
-                )
+                ({ width, height }) => {
+                  // Guard against transient/invalid detector values and cap to viewport bounds.
+                  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+                  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0
+                  const safeWidth = sanitizeGraphDimension(width, viewportWidth)
+                  const safeHeight = sanitizeGraphDimension(height, viewportHeight)
+                  const hasValidSize = safeWidth > 0 && safeHeight > 0
+
+                  if (!hasValidSize) {
+                    return null
+                  }
+
+                  return (
+                    <Graph
+                      key={ drawerOpen ? 'graph-drawer-open' : 'graph-drawer-closed' }
+                      width={ safeWidth }
+                      height={ safeHeight }
+                      nodes={ graph.nodes }
+                      edges={ graph.edges }
+                    />
+                  )
+                }
               }
             </ReactResizeDetector>
           </Box>
