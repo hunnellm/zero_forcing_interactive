@@ -7,6 +7,7 @@ import {
   Edit as DrawIcon,
   Label as LabelIcon,
   Refresh as RedrawIcon,
+  RestartAlt as ResetGraphIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
 
@@ -71,6 +72,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
               '&:hover': { color: theme.palette.primary.main }
             }}
           ><DrawIcon /></IconButton>
+        </Tooltip>
+
+        <Tooltip title="Reset Graph" placement="bottom">
+          <IconButton
+            size="small"
+            onClick={ graph.resetGraph }
+            sx={{
+              color: theme.palette.text.primary,
+              transition: 'color 250ms',
+              '&:hover': { color: theme.palette.primary.main }
+            }}
+          ><ResetGraphIcon /></IconButton>
         </Tooltip>
 
         <Tooltip title="Redraw Graph" placement="bottom">
