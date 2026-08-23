@@ -50,6 +50,9 @@ export const MatrixEditor = () => {
       }
       graph.setMatrix(inputArray)
       graph.uncolorAllNodes()
+      if (inputMode === inputModes.graph6) {
+        setGraph6Content('')
+      }
       setShowResetButton(false)
     } catch (error) {
       if (inputMode === inputModes.graph6) {
