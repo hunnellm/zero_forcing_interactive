@@ -11,17 +11,7 @@ import {
   runForcingStep,
 } from '../../lib/forcing'
 
-const initialGraph = [
-  [0, 1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 0, 0],
-  [0, 1, 0, 1, 0, 0, 0, 0, 0],
-  [0, 0, 1, 0, 1, 0, 0, 0, 0],
-  [0, 0, 0, 1, 0, 1, 0, 0, 0],
-  [0, 0, 0, 0, 1, 0, 1, 0, 0],
-  [0, 0, 0, 0, 0, 1, 0, 1, 0],
-  [0, 0, 0, 0, 0, 0, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1, 0],
-]
+const initialGraph = []
 
 const GraphContext = createContext({})
 
@@ -226,6 +216,18 @@ export const GraphProvider = ({ children }) => {
 
   const clearManualRedraw = useCallback(() => setManualRedrawActive(false), [])
 
+  const resetGraph = useCallback(() => {
+    setMatrix(initialGraph)
+    setNodes([])
+    setEdges([])
+    setColorHistory([])
+    setColoredNodes(new Set())
+    setNodeWeights(initialWeights(0, new Set()))
+    setUsedTransmissions(new Set())
+    setDrawMode(false)
+    setManualRedrawActive(false)
+  }, [setMatrix])
+
  const addNode = useCallback((position = null) => {
   const nextId = matrix.length
   setMatrix(addNodeToMatrix(matrix))
@@ -279,6 +281,7 @@ export const GraphProvider = ({ children }) => {
         manualRedrawActive,
         triggerManualRedraw,
         clearManualRedraw,
+        resetGraph,
         forcing: {
           modes: FORCING_MODES,
           mode: forcingMode,
