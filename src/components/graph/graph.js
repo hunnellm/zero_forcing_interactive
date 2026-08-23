@@ -79,9 +79,12 @@ export const Graph = ({ nodes, edges, height, width }) => {
     graph.toggleNodeColor(node.id)
   }, [graph.coloredNodes, graph.drawMode, graph.addEdge, graph.removeNode, drawSrcNode])
 
-  const handleBackgroundClick = useCallback(() => {
+  const handleBackgroundClick = useCallback((event) => {
     if (!graph.drawMode) return
-    graph.addNode()
+    const pos = fgRef.current
+      ? fgRef.current.screen2GraphCoords(event.offsetX, event.offsetY)
+      : null
+    graph.addNode(pos)
   }, [graph.drawMode, graph.addNode])
 
   const getNodeLabelText = useCallback(id => {
@@ -159,6 +162,14 @@ export const Graph = ({ nodes, edges, height, width }) => {
       fgRef.current.d3ReheatSimulation()
     }
   }, [graph.manualRedrawActive])
+
+  // Reheat simulation whenever nodes or edges change in draw mode so newly
+  // added nodes animate into a visible position.
+  useEffect(() => {
+    if (graph.drawMode && fgRef.current) {
+      fgRef.current.d3ReheatSimulation()
+    }
+  }, [nodes, edges])
 
   const graphData = useMemo(() => ({ nodes, links: edges }), [nodes, edges])
 
