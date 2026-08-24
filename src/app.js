@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Box, useTheme } from '@mui/material'
 import ReactResizeDetector from 'react-resize-detector';
 import { useApp } from './context'
@@ -5,6 +6,8 @@ import { Graph, useGraph } from './components/graph'
 import { Toolbar } from './components/toolbar'
 import { Colorbar } from './components/colorbar'
 import { Drawer } from './components/drawer'
+
+const MIN_DIMENSION = 50
 
 const sanitizeGraphDimension = (value, viewportBound) => {
   if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(viewportBound) || viewportBound <= 0) {
@@ -17,6 +20,7 @@ export const App = () => {
   const theme = useTheme()
   const { graph } = useGraph()
   const { drawerOpen, toggleDrawer } = useApp()
+  const lastGoodSize = useRef(null)
 
   return (
     <Box sx={{
@@ -57,17 +61,23 @@ export const App = () => {
                   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0
                   const safeWidth = sanitizeGraphDimension(width, viewportWidth)
                   const safeHeight = sanitizeGraphDimension(height, viewportHeight)
-                  const hasValidSize = safeWidth > 0 && safeHeight > 0
+                  const hasValidSize = safeWidth >= MIN_DIMENSION && safeHeight >= MIN_DIMENSION
 
-                  if (!hasValidSize) {
+                  if (hasValidSize) {
+                    lastGoodSize.current = { width: safeWidth, height: safeHeight }
+                  }
+
+                  const renderSize = lastGoodSize.current
+
+                  if (!renderSize) {
                     return null
                   }
 
                   return (
                     <Graph
                       key={ drawerOpen ? 'graph-drawer-open' : 'graph-drawer-closed' }
-                      width={ safeWidth }
-                      height={ safeHeight }
+                      width={ renderSize.width }
+                      height={ renderSize.height }
                       nodes={ graph.nodes }
                       edges={ graph.edges }
                     />
