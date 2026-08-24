@@ -58,6 +58,33 @@ Select the mode in the Matrix tab, paste your input, then click **Generate Graph
 Example graph6 input:
 - `Dhc` (cycle graph on 5 vertices)
 
+## Download / Export
+
+### Download as PNG
+
+Click the **download icon (⬇)** in the toolbar to save the current canvas view as a `.png` file.
+
+### Download as TikZ (.tex)
+
+Click the **code icon (`</>`)** in the toolbar to export the current graph as a TikZ picture
+saved to `graph.tex`.
+
+The exported file contains a `tikzpicture` environment with:
+
+- One `\node` per vertex, positioned to reflect the on-screen layout (y-axis inverted for TikZ).
+- `fill=filledcolor` applied to any colored (filled) nodes; `fill=white` for uncolored nodes.
+- `\definecolor{filledcolor}{HTML}{…}` definitions at the top so the file compiles standalone.
+- LaTeX-safe escaping of any special characters in node labels.
+
+Include the file in a LaTeX document with:
+
+```latex
+\usepackage{tikz}
+\input{graph.tex}
+```
+
+or compile it directly using the `standalone` document class.
+
 ## Testing
 
 Run the test suite with:
@@ -69,3 +96,5 @@ npm test
 Tests cover:
 - `src/lib/graph6.test.js` — graph6 string parser
 - `src/lib/matrix-utils.test.js` — adjacency-matrix mutation helpers (`addNodeToMatrix`, `addEdgeToMatrix`, `removeNodeFromMatrix`)
+- `src/lib/tikz.test.js` — TikZ export utility (color mapping, coordinate conversion, label escaping, output generation)
+

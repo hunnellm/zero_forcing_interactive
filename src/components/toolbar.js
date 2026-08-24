@@ -4,12 +4,14 @@ import {
   Close as CloseDrawerIcon,
   Settings as SettingsIcon,
   Download as DownloadIcon,
+  Code as TikzIcon,
   Edit as DrawIcon,
   Label as LabelIcon,
   Refresh as RedrawIcon,
   RestartAlt as ResetGraphIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
+import { generateTikz } from '../lib/tikz'
 
 export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
   const theme = useTheme()
@@ -28,6 +30,23 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
       .replace(/,? /g, '_') }.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
+  }
+
+  const downloadTikz = () => {
+    if (!graph) { return }
+    const tikzContent = generateTikz(
+      graph.nodes,
+      graph.edges,
+      graph.coloredNodes,
+      graph.settings.color,
+    )
+    const blob = new Blob([tikzContent], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.download = 'graph.tex'
+    link.href = url
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -108,6 +127,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
               '&:hover': { color: theme.palette.primary.main }
             }}
           ><DownloadIcon /></IconButton>
+        </Tooltip>
+
+        <Tooltip title="Download Graph as TikZ (.tex)" placement="bottom">
+          <IconButton
+            size="small"
+            onClick={ downloadTikz }
+            sx={{
+              color: theme.palette.text.primary,
+              transition: 'color 250ms',
+              '&:hover': { color: theme.palette.primary.main }
+            }}
+          ><TikzIcon /></IconButton>
         </Tooltip>
 
         <Tooltip title={ graph.settings.showLabels ? 'Hide Vertex Labels' : 'Show Vertex Labels' } placement="bottom">
