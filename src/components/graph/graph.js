@@ -26,6 +26,30 @@ export const Graph = ({ nodes, edges, height, width }) => {
     setHighlightedNodes(highlightedNodes)
   }
 
+  const fitToScreen = useCallback((duration = 0, padding = 20) => {
+    if (fgRef.current) {
+      fgRef.current.zoomToFit(duration, padding)
+    }
+  }, [])
+
+  // Fit all nodes into view after initial layout is computed
+  useEffect(() => {
+    if (graph.needsFit && fgRef.current) {
+      // Defer one frame so ForceGraph has processed the new node positions
+      requestAnimationFrame(() => {
+        fitToScreen(0, 20)
+        graph.clearNeedsFit()
+      })
+    }
+  }, [graph.needsFit, graph.clearNeedsFit, fitToScreen])
+
+  const handleEngineStop = useCallback(() => {
+    if (graph.manualRedrawActive) {
+      graph.clearManualRedraw()
+      fitToScreen(400, 20)
+    }
+  }, [graph.manualRedrawActive, graph.clearManualRedraw, fitToScreen])
+
   const requestReheat = useCallback(() => {
     if (fgRef.current) {
       fgRef.current.d3ReheatSimulation()
@@ -225,7 +249,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onNodeHover={ graph.drawMode ? undefined : handleHoverNode }
       onNodeDrag={ graph.drawMode ? undefined : handleHoverNode }
       onBackgroundClick={ handleBackgroundClick }
-      onEngineStop={ graph.manualRedrawActive ? graph.clearManualRedraw : undefined }
+      onEngineStop={ graph.manualRedrawActive ? handleEngineStop : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
       nodeLabel={ node => graph.settings.showLabels ? getNodeLabelText(node.id) : '' }
