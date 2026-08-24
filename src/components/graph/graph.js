@@ -26,6 +26,44 @@ export const Graph = ({ nodes, edges, height, width }) => {
     setHighlightedNodes(highlightedNodes)
   }
 
+  const requestReheat = useCallback(() => {
+    if (fgRef.current) {
+      fgRef.current.d3ReheatSimulation()
+      return
+    }
+    requestAnimationFrame(() => {
+      if (fgRef.current) {
+        fgRef.current.d3ReheatSimulation()
+      }
+    })
+  }, [])
+
+  const extractBackgroundClickCoords = useCallback((event) => {
+    const rawEvent = event?.srcEvent || event
+    if (!rawEvent) {
+      return null
+    }
+
+    if (Number.isFinite(rawEvent.offsetX) && Number.isFinite(rawEvent.offsetY)) {
+      return { x: rawEvent.offsetX, y: rawEvent.offsetY }
+    }
+
+    const touch = rawEvent.touches?.[0] || rawEvent.changedTouches?.[0]
+    const clientX = Number.isFinite(rawEvent.clientX) ? rawEvent.clientX : touch?.clientX
+    const clientY = Number.isFinite(rawEvent.clientY) ? rawEvent.clientY : touch?.clientY
+    const target = rawEvent.currentTarget || rawEvent.target
+
+    if (Number.isFinite(clientX) && Number.isFinite(clientY) && target?.getBoundingClientRect) {
+      const rect = target.getBoundingClientRect()
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      }
+    }
+
+    return null
+  }, [])
+
   const handleHoverNode = node => {
     highlightedNodes.clear()
     if (node) {
@@ -81,11 +119,12 @@ export const Graph = ({ nodes, edges, height, width }) => {
 
   const handleBackgroundClick = useCallback((event) => {
     if (!graph.drawMode) return
+    const clickCoords = extractBackgroundClickCoords(event)
     const pos = fgRef.current
-      ? fgRef.current.screen2GraphCoords(event.offsetX, event.offsetY)
+      ? fgRef.current.screen2GraphCoords(clickCoords?.x, clickCoords?.y)
       : null
     graph.addNode(pos)
-  }, [graph.drawMode, graph.addNode])
+  }, [extractBackgroundClickCoords, graph.drawMode, graph.addNode])
 
   const getNodeLabelText = useCallback(id => {
     const hideWeight = graph.forcing.mode === FORCING_MODES.ZERO || graph.forcing.mode === FORCING_MODES.PSD
@@ -158,18 +197,18 @@ export const Graph = ({ nodes, edges, height, width }) => {
   }, [fgRef.current])
 
   useEffect(() => {
-    if (graph.manualRedrawActive && fgRef.current) {
-      fgRef.current.d3ReheatSimulation()
+    if (graph.manualRedrawActive) {
+      requestReheat()
     }
-  }, [graph.manualRedrawActive])
+  }, [graph.manualRedrawActive, requestReheat])
 
   // Reheat simulation whenever nodes or edges change in draw mode so newly
   // added nodes animate into a visible position.
   useEffect(() => {
-    if (graph.drawMode && fgRef.current) {
-      fgRef.current.d3ReheatSimulation()
+    if (graph.drawMode) {
+      requestReheat()
     }
-  }, [nodes, edges])
+  }, [graph.drawMode, nodes, edges, requestReheat])
 
   const graphData = useMemo(() => ({ nodes, links: edges }), [nodes, edges])
 

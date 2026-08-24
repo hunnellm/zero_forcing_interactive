@@ -53,6 +53,7 @@ export const Colorbar = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
+        pointerEvents: 'none',
         ...conditionalStyles,
       }}>
         <Typography color="text.secondary" variant="body2">
