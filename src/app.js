@@ -57,25 +57,25 @@ export const App = () => {
               {
                 ({ width, height }) => {
                   // Guard against transient/invalid detector values and cap to viewport bounds.
-                  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0
-                  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0
-                  const safeWidth = sanitizeGraphDimension(width, viewportWidth)
-                  const safeHeight = sanitizeGraphDimension(height, viewportHeight)
+                  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : MIN_DIMENSION
+                  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : MIN_DIMENSION
+                  const viewportWidthBound = Math.max(MIN_DIMENSION, Math.floor(viewportWidth))
+                  const viewportHeightBound = Math.max(MIN_DIMENSION, Math.floor(viewportHeight))
+                  const safeWidth = sanitizeGraphDimension(width, viewportWidthBound)
+                  const safeHeight = sanitizeGraphDimension(height, viewportHeightBound)
                   const hasValidSize = safeWidth >= MIN_DIMENSION && safeHeight >= MIN_DIMENSION
 
                   if (hasValidSize) {
                     lastGoodSize.current = { width: safeWidth, height: safeHeight }
                   }
 
-                  const renderSize = lastGoodSize.current
-
-                  if (!renderSize) {
-                    return null
+                  const renderSize = lastGoodSize.current || {
+                    width: viewportWidthBound,
+                    height: viewportHeightBound,
                   }
 
                   return (
                     <Graph
-                      key={ drawerOpen ? 'graph-drawer-open' : 'graph-drawer-closed' }
                       width={ renderSize.width }
                       height={ renderSize.height }
                       nodes={ graph.nodes }
