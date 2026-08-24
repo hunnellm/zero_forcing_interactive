@@ -37,6 +37,7 @@ export const GraphProvider = ({ children }) => {
   const [beta, setBetaState] = useLocalStorage('transmission-beta', 0.5)
   const [drawMode, setDrawMode] = useState(false)
   const [manualRedrawActive, setManualRedrawActive] = useState(false)
+  const [needsFit, setNeedsFit] = useState(false)
   const [nodeWeights, setNodeWeights] = useState(() => initialWeights(initialGraph.length, new Set()))
   const [usedTransmissions, setUsedTransmissions] = useState(() => new Set())
   const [showLabels, setShowLabels] = useState(false)
@@ -56,10 +57,12 @@ export const GraphProvider = ({ children }) => {
         })
         // Use a normalised coordinate space; the ForceGraph camera adapts
         const positions = computeInitialLayout(rawNodes, rawEdges, 500, 400)
-        return rawNodes.map(n => {
+        const laid = rawNodes.map(n => {
           const p = positions.get(n.id)
           return p ? { ...n, x: p.x, y: p.y } : n
         })
+        setNeedsFit(true)
+        return laid
       }
       return rawNodes
     })
@@ -234,6 +237,8 @@ export const GraphProvider = ({ children }) => {
 
   const clearManualRedraw = useCallback(() => setManualRedrawActive(false), [])
 
+  const clearNeedsFit = useCallback(() => setNeedsFit(false), [])
+
   const resetGraph = useCallback(() => {
     setMatrix(initialGraph)
     setNodes([])
@@ -300,6 +305,8 @@ export const GraphProvider = ({ children }) => {
         manualRedrawActive,
         triggerManualRedraw,
         clearManualRedraw,
+        needsFit,
+        clearNeedsFit,
         resetGraph,
         forcing: {
           modes: FORCING_MODES,
