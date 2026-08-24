@@ -9,11 +9,11 @@ import { Drawer } from './components/drawer'
 
 const MIN_DIMENSION = 50
 
-const sanitizeGraphDimension = (value, viewportBound) => {
-  if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(viewportBound) || viewportBound <= 0) {
+const sanitizeGraphDimension = (value, containerBound) => {
+  if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(containerBound) || containerBound <= 0) {
     return 0
   }
-  return Math.min(Math.floor(value), Math.floor(viewportBound))
+  return Math.min(Math.floor(value), Math.floor(containerBound))
 }
 
 export const App = () => {
@@ -21,14 +21,16 @@ export const App = () => {
   const { graph } = useGraph()
   const { drawerOpen, toggleDrawer } = useApp()
   const lastGoodSize = useRef(null)
+  const containerRef = useRef(null)
 
   return (
     <Box sx={{
-      minHeight: '100vh',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'stretch',
       backgroundColor: theme.palette.background.default,
+      overflow: 'hidden',
     }}>
       <Toolbar drawerOpen={ drawerOpen } toggleDrawer={ toggleDrawer } />
 
@@ -39,7 +41,7 @@ export const App = () => {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <Box sx={{
+        <Box ref={ containerRef } sx={{
           flex: 1,
           minWidth: 0,
           minHeight: 0,
@@ -56,13 +58,15 @@ export const App = () => {
             <ReactResizeDetector handleWidth handleHeight>
               {
                 ({ width, height }) => {
-                  // Guard against transient/invalid detector values and cap to viewport bounds.
-                  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : MIN_DIMENSION
-                  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : MIN_DIMENSION
-                  const viewportWidthBound = Math.max(MIN_DIMENSION, Math.floor(viewportWidth))
-                  const viewportHeightBound = Math.max(MIN_DIMENSION, Math.floor(viewportHeight))
-                  const safeWidth = sanitizeGraphDimension(width, viewportWidthBound)
-                  const safeHeight = sanitizeGraphDimension(height, viewportHeightBound)
+                  // Use the container's actual client size as the bound so the fallback
+                  // never exceeds the available middle area (keeping top/bottom controls visible).
+                  const el = containerRef.current
+                  const containerWidth = el ? el.clientWidth : MIN_DIMENSION
+                  const containerHeight = el ? el.clientHeight : MIN_DIMENSION
+                  const widthBound = Math.max(MIN_DIMENSION, Math.floor(containerWidth))
+                  const heightBound = Math.max(MIN_DIMENSION, Math.floor(containerHeight))
+                  const safeWidth = sanitizeGraphDimension(width, widthBound)
+                  const safeHeight = sanitizeGraphDimension(height, heightBound)
                   const hasValidSize = safeWidth >= MIN_DIMENSION && safeHeight >= MIN_DIMENSION
 
                   if (hasValidSize) {
@@ -70,8 +74,8 @@ export const App = () => {
                   }
 
                   const renderSize = lastGoodSize.current || {
-                    width: viewportWidthBound,
-                    height: viewportHeightBound,
+                    width: widthBound,
+                    height: heightBound,
                   }
 
                   return (
