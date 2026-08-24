@@ -4,6 +4,7 @@ import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
 import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix } from '../../lib/matrix-utils'
 import { encodeGraph6 } from '../../lib/graph6'
+import { computeInitialLayout } from '../../lib/layout'
 import {
   FORCING_MODES,
   clampParameter,
@@ -43,7 +44,24 @@ export const GraphProvider = ({ children }) => {
   useEffect(() => {
     setNodes(prev => {
       const prevMap = new Map(prev.map(n => [n.id, n]))
-      return [...Array(adjacencyMatrix.rows).keys()].map(i => prevMap.get(i) || { id: i })
+      const rawNodes = [...Array(adjacencyMatrix.rows).keys()].map(i => prevMap.get(i) || { id: i })
+      const needsLayout = rawNodes.some(n => !Number.isFinite(n.x))
+      if (needsLayout && rawNodes.length > 0) {
+        // Build edge list from the adjacency matrix for the layout pass
+        const rawEdges = []
+        adjacencyMatrix.data.forEach((row, i) => {
+          for (let j = 0; j < i; j += 1) {
+            if (row[j] === 1) rawEdges.push({ source: i, target: j })
+          }
+        })
+        // Use a normalised coordinate space; the ForceGraph camera adapts
+        const positions = computeInitialLayout(rawNodes, rawEdges, 500, 400)
+        return rawNodes.map(n => {
+          const p = positions.get(n.id)
+          return p ? { ...n, x: p.x, y: p.y } : n
+        })
+      }
+      return rawNodes
     })
     let _edges = []
     adjacencyMatrix.data.forEach((row, i) => {
