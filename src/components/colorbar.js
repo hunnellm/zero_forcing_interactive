@@ -110,26 +110,28 @@ export const Colorbar = () => {
           <ToggleButton value={ graph.forcing.modes.PSD }>PSD Zero Forcing</ToggleButton>
           <ToggleButton value={ graph.forcing.modes.TRANSMISSION }>Transmission Forcing</ToggleButton>
         </ToggleButtonGroup>
-        <TextField
-          label="α"
-          type="number"
-          size="small"
-          value={ graph.forcing.alpha }
-          onChange={ event => graph.forcing.setAlpha(event.target.value) }
-          inputProps={{ min: 0, max: 1, step: 0.01 }}
-          disabled={ !transmissionModeActive }
-          sx={{ width: 95 }}
-        />
-        <TextField
-          label="β"
-          type="number"
-          size="small"
-          value={ graph.forcing.beta }
-          onChange={ event => graph.forcing.setBeta(event.target.value) }
-          inputProps={{ min: 0, max: 1, step: 0.01 }}
-          disabled={ !transmissionModeActive }
-          sx={{ width: 95 }}
-        />
+        { transmissionModeActive && (
+          <TextField
+            label="α"
+            type="number"
+            size="small"
+            value={ graph.forcing.alpha }
+            onChange={ event => graph.forcing.setAlpha(event.target.value) }
+            inputProps={{ min: 0, max: 1, step: 0.01 }}
+            sx={{ width: 95 }}
+          />
+        ) }
+        { transmissionModeActive && (
+          <TextField
+            label="β"
+            type="number"
+            size="small"
+            value={ graph.forcing.beta }
+            onChange={ event => graph.forcing.setBeta(event.target.value) }
+            inputProps={{ min: 0, max: 1, step: 0.01 }}
+            sx={{ width: 95 }}
+          />
+        ) }
       </Stack>
       <Stack spacing={ 2 } direction="row">
         <Tooltip title="Reset Coloring" placement="top">
