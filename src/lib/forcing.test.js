@@ -89,7 +89,7 @@ const strictThresholdStep = runForcingStep({
   beta: 0.5,
 })
 assert.strictEqual(strictThresholdStep.nodeWeights.get(1), 0.5)
-assert.ok(!strictThresholdStep.coloredNodes.has(1), 'Node 1 should remain unfilled when weight equals beta')
+assert.ok(strictThresholdStep.coloredNodes.has(1), 'Node 1 should fill when weight equals beta')
 
 // Label formatting includes current weight
 assert.strictEqual(formatNodeLabel(7, 0.333), '7 (w=0.33)')
