@@ -32,6 +32,7 @@ const NUMBER_VARIANT_LABELS = {
 const SET_VARIANT_LABELS = {
   [SET_VARIANTS.STANDARD]: 'standard',
   [SET_VARIANTS.PSD]: 'psd',
+  [SET_VARIANTS.FAULT_TOLERANT]: 'fault-tolerant',
 }
 
 const stopAccordionToggle = callback => event => {
@@ -222,6 +223,7 @@ export const ComputationPanel = ({ analysisPanel }) => {
               >
                 <ToggleButton value={ SET_VARIANTS.STANDARD }>standard</ToggleButton>
                 <ToggleButton value={ SET_VARIANTS.PSD }>psd</ToggleButton>
+                <ToggleButton value={ SET_VARIANTS.FAULT_TOLERANT }>fault-tolerant</ToggleButton>
               </ToggleButtonGroup>
 
               { setsAnalysis.status === COMPUTE_STATUS.ERROR && <Alert severity="error">{ setsAnalysis.error }</Alert> }

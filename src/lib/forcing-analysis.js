@@ -411,6 +411,87 @@ const findMinimumRankLookupKey = adjacencyData => {
   return null
 }
 
+const isFaultTolerantZeroForcingSet = (adjacencyMasks, closureCache, mask, n, faults, poll) => {
+  const fullMask = (1n << toBigInt(n)) - 1n
+
+  const getClosure = m => {
+    if (!closureCache.has(m)) {
+      closureCache.set(m, zeroForcingClosure(adjacencyMasks, m, n, poll))
+    }
+    return closureCache.get(m)
+  }
+
+  if (getClosure(mask) !== fullMask) return false
+  const size = popcount(mask)
+  const subsetSize = size - faults
+  if (subsetSize <= 0) return false
+  const includedVertices = bitmaskToSet(mask, n)
+  let valid = true
+
+  const enumerateFaultSubsets = (start, depth, subsetMask) => {
+    if (!valid) return true
+    if (depth === subsetSize) {
+      poll()
+      if (getClosure(subsetMask) !== fullMask) {
+        valid = false
+        return true
+      }
+      return false
+    }
+    for (let index = start; index <= includedVertices.length - (subsetSize - depth); index += 1) {
+      if (enumerateFaultSubsets(index + 1, depth + 1, subsetMask | maskForVertex(includedVertices[index]))) {
+        return true
+      }
+    }
+    return false
+  }
+
+  enumerateFaultSubsets(0, 0, 0n)
+  return valid
+}
+
+const findRepresentativeFaultTolerantMinimumSets = (adjacencyData, faults, cap, poll) => {
+  const n = adjacencyData.length
+  const adjacencyMasks = buildAdjacencyMasks(adjacencyData)
+  const closureCache = new Map()
+
+  for (let size = 0; size <= n; size += 1) {
+    const representatives = []
+    let truncated = false
+    let foundAny = false
+
+    const stop = enumerateSubsets(n, size, mask => {
+      poll()
+      if (!isFaultTolerantZeroForcingSet(adjacencyMasks, closureCache, mask, n, faults, poll)) return false
+      foundAny = true
+      const alreadyRepresented = representatives.some(existing => areEquivalentUnderAutomorphism(adjacencyData, existing, mask))
+      if (!alreadyRepresented) {
+        representatives.push(mask)
+        if (representatives.length > cap) {
+          truncated = true
+          return true
+        }
+      }
+      return false
+    })
+
+    if (foundAny || stop) {
+      const limitedRepresentatives = representatives.slice(0, cap)
+      return {
+        number: size,
+        sets: limitedRepresentatives.map(mask => bitmaskToSet(mask, n)),
+        truncated,
+      }
+    }
+  }
+
+  return {
+    number: n,
+    sets: [],
+    truncated: false,
+  }
+}
+
 const findRepresentativeMinimumSets = (adjacencyData, variant, cap, poll) => {
   const n = adjacencyData.length
   const adjacencyMasks = buildAdjacencyMasks(adjacencyData)
@@ -512,6 +593,15 @@ export const computeSetsResult = ({
   const poll = createWorkPoller(checkCancelled)
   if (!Object.values(SET_VARIANTS).includes(variant)) {
     throw new Error(`Unsupported minimum-set variant: ${variant}`)
+  }
+
+  if (variant === SET_VARIANTS.FAULT_TOLERANT) {
+    const result = findRepresentativeFaultTolerantMinimumSets(adjacencyData, 1, cap, poll)
+    return {
+      variant,
+      label: 'Minimum fault-tolerant forcing sets up to graph automorphism',
+      ...result,
+    }
   }
 
   const result = findRepresentativeMinimumSets(adjacencyData, variant, cap, poll)

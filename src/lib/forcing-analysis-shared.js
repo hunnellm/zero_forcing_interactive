@@ -22,6 +22,7 @@ export const NUMBER_VARIANTS = {
 export const SET_VARIANTS = {
   STANDARD: 'standard',
   PSD: 'psd',
+  FAULT_TOLERANT: 'fault-tolerant',
 }
 
 // UI cap for representative minimum forcing sets. This keeps navigation responsive
