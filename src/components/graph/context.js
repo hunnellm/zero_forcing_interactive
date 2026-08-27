@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
@@ -11,8 +11,22 @@ import {
   initialWeights,
   runForcingStep,
 } from '../../lib/forcing'
+import {
+  COMPUTE_OPERATIONS,
+  COMPUTE_STATUS,
+  MAX_DISPLAYED_MINIMUM_SETS,
+  NUMBER_VARIANTS,
+  SET_VARIANTS,
+  clampActiveSetIndex,
+  createCacheKey,
+  createNumberVariantConfig,
+  createOperationState,
+  createSetsVariantConfig,
+  isResultStale,
+} from '../../lib/forcing-analysis-shared'
 
 const initialGraph = []
+const createAnalysisWorker = () => new Worker(new URL('../../lib/forcing-analysis-worker.js', import.meta.url))
 
 const GraphContext = createContext({})
 
@@ -41,6 +55,17 @@ export const GraphProvider = ({ children }) => {
   const [nodeWeights, setNodeWeights] = useState(() => initialWeights(initialGraph.length, new Set()))
   const [usedTransmissions, setUsedTransmissions] = useState(() => new Set())
   const [showLabels, setShowLabels] = useState(false)
+  const [numberVariant, setNumberVariant] = useLocalStorage('forcing-number-variant', NUMBER_VARIANTS.FAULT_TOLERANT)
+  const [setVariant, setSetVariant] = useLocalStorage('minimum-set-variant', SET_VARIANTS.STANDARD)
+  const [numberComputation, setNumberComputation] = useState(() => createOperationState())
+  const [setsComputation, setSetsComputation] = useState(() => createOperationState())
+  const [activeMinimumSetIndex, setActiveMinimumSetIndex] = useState(0)
+  const numberCacheRef = useRef(new Map())
+  const setsCacheRef = useRef(new Map())
+  const numberWorkerRef = useRef(null)
+  const setsWorkerRef = useRef(null)
+  const numberTimerRef = useRef(null)
+  const setsTimerRef = useRef(null)
   
   useEffect(() => {
     setNodes(prev => {
@@ -196,6 +221,271 @@ export const GraphProvider = ({ children }) => {
     setForcingMode(mode)
   }, [])
 
+  const numberVariantConfig = useMemo(() => createNumberVariantConfig({
+    variant: numberVariant,
+    alpha,
+    beta,
+  }), [numberVariant, alpha, beta])
+
+  const setsVariantConfig = useMemo(() => createSetsVariantConfig(setVariant), [setVariant])
+
+  const numberCacheKey = useMemo(() => createCacheKey({
+    graph6String,
+    operation: COMPUTE_OPERATIONS.NUMBER,
+    ...numberVariantConfig,
+  }), [graph6String, numberVariantConfig])
+
+  const setsCacheKey = useMemo(() => createCacheKey({
+    graph6String,
+    operation: COMPUTE_OPERATIONS.SETS,
+    ...setsVariantConfig,
+  }), [graph6String, setsVariantConfig])
+
+  const clearElapsedTimer = useCallback(timerRef => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const terminateWorker = useCallback(workerRef => {
+    if (workerRef.current) {
+      workerRef.current.terminate()
+      workerRef.current = null
+    }
+  }, [])
+
+  const cancelNumberComputation = useCallback(() => {
+    terminateWorker(numberWorkerRef)
+    clearElapsedTimer(numberTimerRef)
+    setNumberComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.CANCELLED,
+    }))
+  }, [clearElapsedTimer, terminateWorker])
+
+  const cancelSetsComputation = useCallback(() => {
+    terminateWorker(setsWorkerRef)
+    clearElapsedTimer(setsTimerRef)
+    setSetsComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.CANCELLED,
+    }))
+  }, [clearElapsedTimer, terminateWorker])
+
+  const runNumberComputation = useCallback(() => {
+    const cachedResult = numberCacheRef.current.get(numberCacheKey)
+    if (cachedResult) {
+      setNumberComputation({
+        status: COMPUTE_STATUS.SUCCESS,
+        result: cachedResult,
+        resultKey: numberCacheKey,
+        error: null,
+        elapsedMs: 0,
+      })
+      return
+    }
+
+    terminateWorker(numberWorkerRef)
+    clearElapsedTimer(numberTimerRef)
+
+    const worker = createAnalysisWorker()
+    const startedAt = Date.now()
+    numberWorkerRef.current = worker
+
+    setNumberComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.RUNNING,
+      error: null,
+      elapsedMs: 0,
+    }))
+
+    numberTimerRef.current = window.setInterval(() => {
+      setNumberComputation(prev => (
+        prev.status === COMPUTE_STATUS.RUNNING
+          ? { ...prev, elapsedMs: Date.now() - startedAt }
+          : prev
+      ))
+    }, 100)
+
+    worker.addEventListener('message', event => {
+      terminateWorker(numberWorkerRef)
+      clearElapsedTimer(numberTimerRef)
+      const elapsedMs = Date.now() - startedAt
+
+      if (event.data?.status === 'success') {
+        numberCacheRef.current.set(numberCacheKey, event.data.result)
+        setNumberComputation({
+          status: COMPUTE_STATUS.SUCCESS,
+          result: event.data.result,
+          resultKey: numberCacheKey,
+          error: null,
+          elapsedMs,
+        })
+        return
+      }
+
+      setNumberComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: event.data?.error || 'Unable to compute the requested value.',
+        elapsedMs,
+      }))
+    }, { once: true })
+
+    worker.addEventListener('error', () => {
+      terminateWorker(numberWorkerRef)
+      clearElapsedTimer(numberTimerRef)
+      setNumberComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: 'Unable to compute the requested value.',
+      }))
+    }, { once: true })
+
+    worker.postMessage({
+      operation: COMPUTE_OPERATIONS.NUMBER,
+      payload: {
+        adjacencyData: adjacencyMatrix.data,
+        graph6String,
+        ...numberVariantConfig,
+      },
+    })
+  }, [
+    adjacencyMatrix.data,
+    clearElapsedTimer,
+    graph6String,
+    numberCacheKey,
+    numberVariantConfig,
+    terminateWorker,
+  ])
+
+  const runSetsComputation = useCallback(() => {
+    const cachedResult = setsCacheRef.current.get(setsCacheKey)
+    if (cachedResult) {
+      setActiveMinimumSetIndex(0)
+      setSetsComputation({
+        status: COMPUTE_STATUS.SUCCESS,
+        result: cachedResult,
+        resultKey: setsCacheKey,
+        error: null,
+        elapsedMs: 0,
+      })
+      return
+    }
+
+    terminateWorker(setsWorkerRef)
+    clearElapsedTimer(setsTimerRef)
+
+    const worker = createAnalysisWorker()
+    const startedAt = Date.now()
+    setsWorkerRef.current = worker
+
+    setSetsComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.RUNNING,
+      error: null,
+      elapsedMs: 0,
+    }))
+
+    setsTimerRef.current = window.setInterval(() => {
+      setSetsComputation(prev => (
+        prev.status === COMPUTE_STATUS.RUNNING
+          ? { ...prev, elapsedMs: Date.now() - startedAt }
+          : prev
+      ))
+    }, 100)
+
+    worker.addEventListener('message', event => {
+      terminateWorker(setsWorkerRef)
+      clearElapsedTimer(setsTimerRef)
+      const elapsedMs = Date.now() - startedAt
+
+      if (event.data?.status === 'success') {
+        setsCacheRef.current.set(setsCacheKey, event.data.result)
+        setActiveMinimumSetIndex(0)
+        setSetsComputation({
+          status: COMPUTE_STATUS.SUCCESS,
+          result: event.data.result,
+          resultKey: setsCacheKey,
+          error: null,
+          elapsedMs,
+        })
+        return
+      }
+
+      setSetsComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: event.data?.error || 'Unable to compute minimum forcing sets.',
+        elapsedMs,
+      }))
+    }, { once: true })
+
+    worker.addEventListener('error', () => {
+      terminateWorker(setsWorkerRef)
+      clearElapsedTimer(setsTimerRef)
+      setSetsComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: 'Unable to compute minimum forcing sets.',
+      }))
+    }, { once: true })
+
+    worker.postMessage({
+      operation: COMPUTE_OPERATIONS.SETS,
+      payload: {
+        adjacencyData: adjacencyMatrix.data,
+        cap: MAX_DISPLAYED_MINIMUM_SETS,
+        ...setsVariantConfig,
+      },
+    })
+  }, [
+    adjacencyMatrix.data,
+    clearElapsedTimer,
+    setsCacheKey,
+    setsVariantConfig,
+    terminateWorker,
+  ])
+
+  useEffect(() => () => {
+    terminateWorker(numberWorkerRef)
+    terminateWorker(setsWorkerRef)
+    clearElapsedTimer(numberTimerRef)
+    clearElapsedTimer(setsTimerRef)
+  }, [clearElapsedTimer, terminateWorker])
+
+  const numberResultStale = useMemo(
+    () => isResultStale(numberComputation.resultKey, numberCacheKey),
+    [numberComputation.resultKey, numberCacheKey],
+  )
+
+  const setsResultStale = useMemo(
+    () => isResultStale(setsComputation.resultKey, setsCacheKey),
+    [setsComputation.resultKey, setsCacheKey],
+  )
+
+  const displayedMinimumSets = setsComputation.result?.sets || []
+  const clampedActiveMinimumSetIndex = clampActiveSetIndex(activeMinimumSetIndex, displayedMinimumSets.length)
+
+  useEffect(() => {
+    if (clampedActiveMinimumSetIndex !== activeMinimumSetIndex) {
+      setActiveMinimumSetIndex(clampedActiveMinimumSetIndex)
+    }
+  }, [activeMinimumSetIndex, clampedActiveMinimumSetIndex])
+
+  const activeMinimumSet = useMemo(() => (
+    setsResultStale ? [] : (displayedMinimumSets[clampedActiveMinimumSetIndex] || [])
+  ), [clampedActiveMinimumSetIndex, displayedMinimumSets, setsResultStale])
+
+  const stepToPreviousMinimumSet = useCallback(() => {
+    setActiveMinimumSetIndex(prev => clampActiveSetIndex(prev - 1, displayedMinimumSets.length))
+  }, [displayedMinimumSets.length])
+
+  const stepToNextMinimumSet = useCallback(() => {
+    setActiveMinimumSetIndex(prev => clampActiveSetIndex(prev + 1, displayedMinimumSets.length))
+  }, [displayedMinimumSets.length])
+
   const colorStep = useCallback(() => {
     setColorHistory(prev => [...prev, {
       coloredNodes: new Set(coloredNodes),
@@ -326,6 +616,38 @@ export const GraphProvider = ({ children }) => {
           toggleAutoRedraw,
           showLabels,
           toggleShowLabels,
+        },
+        analysis: {
+          constants: {
+            maxDisplayedMinimumSets: MAX_DISPLAYED_MINIMUM_SETS,
+          },
+          number: {
+            variant: numberVariant,
+            setVariant: setNumberVariant,
+            status: numberComputation.status,
+            elapsedMs: numberComputation.elapsedMs,
+            result: numberComputation.result,
+            error: numberComputation.error,
+            stale: numberResultStale,
+            compute: runNumberComputation,
+            cancel: cancelNumberComputation,
+          },
+          sets: {
+            variant: setVariant,
+            setVariant: setSetVariant,
+            status: setsComputation.status,
+            elapsedMs: setsComputation.elapsedMs,
+            result: setsComputation.result,
+            error: setsComputation.error,
+            stale: setsResultStale,
+            activeIndex: clampedActiveMinimumSetIndex,
+            activeSet: activeMinimumSet,
+            setActiveIndex: setActiveMinimumSetIndex,
+            previous: stepToPreviousMinimumSet,
+            next: stepToNextMinimumSet,
+            compute: runSetsComputation,
+            cancel: cancelSetsComputation,
+          },
         },
       },
       colorStep,

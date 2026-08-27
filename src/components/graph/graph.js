@@ -157,9 +157,16 @@ export const Graph = ({ nodes, edges, height, width }) => {
     return formatNodeLabel(id, weight)
   }, [graph.forcing.mode, graph.nodeWeights])
 
+  const analysisHighlightedNodes = useMemo(
+    () => new Set(graph.analysis.sets.activeSet),
+    [graph.analysis.sets.activeSet],
+  )
+
   const nodeCanvasObject = useCallback(({ x, y, id }, context) => {
     if (graph.drawMode && drawSrcNode === id) {
       // Draw a distinct selection ring in draw mode
+      paintRing({ x, y }, context, theme.palette.secondary.main)
+    } else if (analysisHighlightedNodes.has(id)) {
       paintRing({ x, y }, context, theme.palette.secondary.main)
     } else if (highlightedNodes.has(id)) {
       paintRing({ x, y }, context)
@@ -198,7 +205,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
   // Restore canvas alpha state back to 1.0 for the next items
   context.restore() 
 }
-  }, [graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette, getNodeLabelText])
+  }, [analysisHighlightedNodes, graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette, getNodeLabelText])
 
   const nodePaint = ({ x, y }, color, context) => {
     context.fillStyle = color
