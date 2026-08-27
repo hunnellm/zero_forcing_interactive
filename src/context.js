@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import { useMediaQuery } from '@mui/material'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { useLocalStorage } from './hooks'
+import { useAnalysisPanelState } from './components/analysis-panel-state'
 
 const AppContext = createContext({})
 
@@ -54,11 +55,7 @@ export const useApp = () => useContext(AppContext)
 export const AppProvider = ({ children }) => {
   const compact = useMediaQuery('(max-width: 600px)')
   const [mode, setMode] = useLocalStorage('mode', MODES.light)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-
-  const openDrawer = useCallback(() => setDrawerOpen(true), [])
-  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
-  const toggleDrawer = useCallback(() => setDrawerOpen(open => !open), [])
+  const analysisPanel = useAnalysisPanelState()
 
   const otherMode = useMemo(() => mode === MODES.light ? MODES.dark : MODES.light, [mode])
 
@@ -73,7 +70,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       compact,
       MODES, mode, setMode, toggleMode, otherMode,
-      drawerOpen, openDrawer, closeDrawer, toggleDrawer,
+      analysisPanel,
     }}>
       <ThemeProvider theme={ theme }>
         { children }

@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types'
 import { AppBar, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 import {
   Close as CloseDrawerIcon,
@@ -11,10 +10,12 @@ import {
   RestartAlt as ResetGraphIcon,
 } from '@mui/icons-material'
 import { useGraph } from './graph'
+import { useApp } from '../context'
 import { generateTikz } from '../lib/tikz'
 
-export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
+export const Toolbar = () => {
   const theme = useTheme()
+  const { analysisPanel } = useApp()
   const { graph } = useGraph()
 
   const downloadCanvasPNG = () => {
@@ -153,23 +154,18 @@ export const Toolbar = ({ drawerOpen, toggleDrawer }) => {
           ><LabelIcon /></IconButton>
         </Tooltip>
 
-        <Tooltip title="View Settings" placement="bottom">
+        <Tooltip title={ analysisPanel.drawerOpen ? 'Hide analysis panel' : 'Show analysis panel' } placement="bottom">
           <IconButton
             size="small"
-            onClick={ toggleDrawer }
-            aria-label={ drawerOpen ? 'Close options panel' : 'Open options panel' }
-            aria-controls="options-panel"
-            aria-expanded={ drawerOpen }
-            sx={{ color: drawerOpen ? theme.palette.primary.main : theme.palette.text.primary }}
-          >{ drawerOpen ? <CloseDrawerIcon /> : <SettingsIcon /> }</IconButton>
+            onClick={ analysisPanel.toggleDrawer }
+            aria-label={ analysisPanel.drawerOpen ? 'Close analysis panel' : 'Open analysis panel' }
+            aria-controls="analysis-panel"
+            aria-expanded={ analysisPanel.drawerOpen }
+            sx={{ color: analysisPanel.drawerOpen ? theme.palette.primary.main : theme.palette.text.primary }}
+          >{ analysisPanel.drawerOpen ? <CloseDrawerIcon /> : <SettingsIcon /> }</IconButton>
         </Tooltip>
         </Stack>
       </Stack>
     </AppBar>
   )
-}
-
-Toolbar.propTypes = {
-  toggleDrawer: PropTypes.func.isRequired,
-  drawerOpen: PropTypes.bool.isRequired,
 }

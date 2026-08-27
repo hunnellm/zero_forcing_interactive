@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import {
   Box,
@@ -11,33 +11,37 @@ import {
   useTheme,
 } from '@mui/material'
 import { Close as CloseDrawerIcon } from '@mui/icons-material'
-import { useApp } from '../../context'
+import { ComputationPanel } from '../computation-panel'
 import { MatrixEditor } from './matrix-editor'
 import { SettingsForm } from './settings-form'
 import { About } from './about'
 import { Instructions } from './instructions'
 
-
 const tabs = [
+  {
+    id: 'analysis',
+    label: 'Analysis',
+    Component: ComputationPanel,
+  },
   {
     id: 'instructions',
     label: 'Instructions',
-    Component: Instructions
+    Component: Instructions,
   },
   {
     id: 'matrix',
     label: 'Generate Graph',
-    Component: MatrixEditor
+    Component: MatrixEditor,
   },
   {
     id: 'settings',
     label: 'Settings',
-    Component: SettingsForm
+    Component: SettingsForm,
   },
   {
     id: 'about',
     label: 'About',
-    Component: About
+    Component: About,
   },
 ]
 
@@ -48,8 +52,8 @@ function TabPanel(props) {
     <div
       role="tabpanel"
       hidden={ value !== index }
-      id={ `config-tabpanel-${ index }` }
-      aria-labelledby={`config-tab-${ index }`}
+      id={ `analysis-tabpanel-${ index }` }
+      aria-labelledby={ `analysis-tab-${ index }` }
       style={{ padding: '1rem' }}
       { ...other }
     >
@@ -58,46 +62,68 @@ function TabPanel(props) {
   )
 }
 
-
 TabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
   value: PropTypes.number.isRequired,
 }
 
-//
-
-export const Drawer = () => {
+export const Drawer = ({ analysisPanel }) => {
   const theme = useTheme()
-  const { drawerOpen, closeDrawer } = useApp()
   const [currentTab, setCurrentTab] = useState(0)
+  const [resizing, setResizing] = useState(false)
 
   useEffect(() => {
-    if (!drawerOpen) {
+    if (!analysisPanel.drawerOpen) {
       return undefined
     }
 
     const handleKeyDown = event => {
       if (event.key === 'Escape') {
-        closeDrawer()
+        analysisPanel.closeDrawer()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closeDrawer, drawerOpen])
+  }, [analysisPanel])
+
+  useEffect(() => {
+    if (!resizing || analysisPanel.overlay) {
+      return undefined
+    }
+
+    const handlePointerMove = event => {
+      analysisPanel.setDrawerWidth(window.innerWidth - event.clientX)
+    }
+    const handlePointerUp = () => setResizing(false)
+
+    window.addEventListener('mousemove', handlePointerMove)
+    window.addEventListener('mouseup', handlePointerUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove)
+      window.removeEventListener('mouseup', handlePointerUp)
+    }
+  }, [analysisPanel, resizing])
 
   const handleClickTab = (event, newTab) => {
     setCurrentTab(newTab)
   }
 
+  const panelWidth = useMemo(() => (
+    analysisPanel.overlay
+      ? `min(${ analysisPanel.drawerWidth }px, calc(100vw - 2rem))`
+      : `${ analysisPanel.drawerWidth }px`
+  ), [analysisPanel.drawerWidth, analysisPanel.overlay])
+
   return (
     <>
       <Box
-        onClick={ closeDrawer }
+        onClick={ analysisPanel.closeDrawer }
         aria-hidden="true"
         sx={{
-          display: { xs: drawerOpen ? 'block' : 'none', md: 'none' },
+          display: analysisPanel.overlay && analysisPanel.drawerOpen ? 'block' : 'none',
           position: 'absolute',
           inset: 0,
           zIndex: 2,
@@ -107,19 +133,19 @@ export const Drawer = () => {
 
       <CardContent
         component="aside"
-        id="options-panel"
-        aria-hidden={ !drawerOpen }
-        aria-labelledby="options-panel-title"
+        id="analysis-panel"
+        aria-hidden={ !analysisPanel.drawerOpen }
+        aria-labelledby="analysis-panel-title"
         sx={{
-          position: { xs: 'absolute', md: 'relative' },
+          position: analysisPanel.overlay ? 'absolute' : 'relative',
           top: 0,
           right: 0,
           bottom: 0,
           zIndex: 3,
           boxSizing: 'border-box',
           backgroundColor: theme.palette.background.paper,
-          borderLeft: drawerOpen ? `1px solid ${ theme.palette.divider }` : '1px solid transparent',
-          width: { xs: 'min(24rem, calc(100vw - 2rem))', md: drawerOpen ? 380 : 0 },
+          borderLeft: analysisPanel.drawerOpen ? `1px solid ${ theme.palette.divider }` : '1px solid transparent',
+          width: analysisPanel.drawerOpen ? panelWidth : 0,
           maxWidth: '100%',
           p: 0,
           display: 'flex',
@@ -127,18 +153,39 @@ export const Drawer = () => {
           minHeight: 0,
           height: '100%',
           overflow: 'hidden',
-          boxShadow: { xs: drawerOpen ? 12 : 0, md: 0 },
-          transform: {
-            xs: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-            md: 'translateX(0)',
-          },
-          opacity: drawerOpen ? 1 : { xs: 0, md: 1 },
-          pointerEvents: drawerOpen ? 'auto' : { xs: 'none', md: 'none' },
+          boxShadow: analysisPanel.overlay && analysisPanel.drawerOpen ? 12 : 0,
+          transform: analysisPanel.drawerOpen ? 'translateX(0)' : 'translateX(100%)',
+          opacity: analysisPanel.drawerOpen ? 1 : 0,
+          pointerEvents: analysisPanel.drawerOpen ? 'auto' : 'none',
           transition: theme.transitions.create(['transform', 'width', 'opacity', 'border-color'], {
             duration: theme.transitions.duration.enteringScreen,
           }),
         }}
       >
+        {
+          analysisPanel.drawerOpen && !analysisPanel.overlay && (
+            <Box
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize analysis panel"
+              onMouseDown={ event => {
+                event.preventDefault()
+                setResizing(true)
+              } }
+              sx={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: 10,
+                transform: 'translateX(-50%)',
+                cursor: 'col-resize',
+                zIndex: 4,
+              }}
+            />
+          )
+        }
+
         <Stack
           direction="row"
           alignItems="center"
@@ -150,20 +197,20 @@ export const Drawer = () => {
             flexShrink: 0,
           }}
         >
-          <Typography id="options-panel-title" variant="h6" color="text.primary">
-            Options
+          <Typography id="analysis-panel-title" variant="h6" color="text.primary">
+            Analysis & tools
           </Typography>
           <IconButton
             size="small"
-            onClick={ closeDrawer }
-            aria-label="Close options panel"
+            onClick={ analysisPanel.closeDrawer }
+            aria-label="Close analysis panel"
           >
             <CloseDrawerIcon fontSize="small" />
           </IconButton>
         </Stack>
 
         <Tabs
-          aria-label="settings tabs"
+          aria-label="analysis tabs"
           value={ currentTab }
           onChange={ handleClickTab }
           variant="scrollable"
@@ -176,8 +223,8 @@ export const Drawer = () => {
           {
             tabs.map((tab, index) => (
               <Tab
-                id={ `config-tab-${ index }` }
-                aria-controls={ `config-tabpanel-${ index }` }
+                id={ `analysis-tab-${ index }` }
+                aria-controls={ `analysis-tabpanel-${ index }` }
                 label={ tab.label }
                 key={ `tab-label-${ tab.label }` }
               />
@@ -188,7 +235,7 @@ export const Drawer = () => {
           {
             tabs.map(({ Component, ...tab }, i) => (
               <TabPanel value={ currentTab } index={ i } key={ `tab-${ tab.label }` }>
-                <Component />
+                <Component analysisPanel={ analysisPanel } />
               </TabPanel>
             ))
           }
@@ -196,4 +243,14 @@ export const Drawer = () => {
       </CardContent>
     </>
   )
+}
+
+Drawer.propTypes = {
+  analysisPanel: PropTypes.shape({
+    closeDrawer: PropTypes.func.isRequired,
+    drawerOpen: PropTypes.bool.isRequired,
+    drawerWidth: PropTypes.number.isRequired,
+    overlay: PropTypes.bool.isRequired,
+    setDrawerWidth: PropTypes.func.isRequired,
+  }).isRequired,
 }
