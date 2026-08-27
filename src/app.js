@@ -19,7 +19,7 @@ const sanitizeGraphDimension = (value, containerBound) => {
 export const App = () => {
   const theme = useTheme()
   const { graph } = useGraph()
-  const { drawerOpen, toggleDrawer } = useApp()
+  const { analysisPanel } = useApp()
   const lastGoodSize = useRef(null)
   const containerRef = useRef(null)
 
@@ -32,7 +32,7 @@ export const App = () => {
       backgroundColor: theme.palette.background.default,
       overflow: 'hidden',
     }}>
-      <Toolbar drawerOpen={ drawerOpen } toggleDrawer={ toggleDrawer } />
+      <Toolbar />
 
       <Box sx={{
         flex: 1,
@@ -94,7 +94,7 @@ export const App = () => {
           <Colorbar />
         </Box>
 
-        <Drawer />
+        <Drawer analysisPanel={ analysisPanel } />
       </Box>
 
     </Box>

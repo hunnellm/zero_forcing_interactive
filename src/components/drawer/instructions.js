@@ -47,19 +47,26 @@ export const Instructions = () => {
           (↩) clears all colored nodes and the step history at once.
         </Typography>
         <Typography paragraph>
-          The compute panels are <Typography color="primary" component="span">on-demand only</Typography>:
+          The <Typography color="primary" component="span">Analysis</Typography> tab in the right-side
+          panel keeps the forcing computations <Typography color="primary" component="span">on-demand only</Typography>:
           nothing is recomputed when the graph or variant changes until you click one of the
-          compute buttons. The first compute action finds the selected value variant, while the
-          second computes minimum forcing sets for the selected standard or PSD variant and keeps
-          one representative from each automorphism class of the current graph.
+          compute buttons in the compact analysis cards. The first card finds the selected value
+          variant, while the second computes minimum forcing sets for the selected standard or PSD
+          variant and keeps one representative from each automorphism class of the current graph.
+        </Typography>
+        <Typography paragraph>
+          Use the toolbar toggle to open or close the Analysis panel, and drag its left edge on
+          wider screens to resize it. On smaller screens the same panel slides over the canvas so
+          the graph keeps its full working area when the panel is hidden.
         </Typography>
         <Typography paragraph>
           Long computations show a spinner, elapsed time, and a
           <Typography color="primary" component="span"> Cancel</Typography> button.
           Computed results stay visible for this browser session. If you edit the graph or switch
-          variants afterwards, the old result stays on screen with a
+          variants afterwards, the old result stays in the card header with a
           <Typography color="primary" component="span"> Stale</Typography> badge until you recompute.
-          Minimum-set results also include <Typography color="primary" component="span">Previous</Typography> /
+          Expand a card to see the detailed result body. Minimum-set results also include
+          <Typography color="primary" component="span">Previous</Typography> /
           <Typography color="primary" component="span">Next</Typography> navigation, the active vertex list,
           and a warning if the representative-set display cap is reached.
         </Typography>

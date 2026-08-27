@@ -1,237 +1,301 @@
 import PropTypes from 'prop-types'
-import { Alert, Box, Button, Chip, CircularProgress, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
-import { SkipNext as NextIcon, SkipPrevious as PreviousIcon } from '@mui/icons-material'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material'
+import {
+  ExpandMore as ExpandMoreIcon,
+  SkipNext as NextIcon,
+  SkipPrevious as PreviousIcon,
+} from '@mui/icons-material'
 import { useGraph } from './graph'
+import { ANALYSIS_CARD_KEYS } from './analysis-panel-state'
+import { createAnalysisHeaderMeta } from './computation-panel-shared'
 import { COMPUTE_STATUS, NUMBER_VARIANTS, SET_VARIANTS } from '../lib/forcing-analysis-shared'
 
-const formatElapsed = elapsedMs => `${(elapsedMs / 1000).toFixed(1)}s`
-
-const StatusRow = ({ status, elapsedMs, error, onCancel }) => {
-  if (status === COMPUTE_STATUS.RUNNING) {
-    return (
-      <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
-        <CircularProgress size={ 18 } />
-        <Typography variant="body2" color="text.secondary">
-          Computing… {formatElapsed(elapsedMs)}
-        </Typography>
-        <Button size="small" onClick={ onCancel }>Cancel</Button>
-      </Stack>
-    )
-  }
-
-  if (status === COMPUTE_STATUS.ERROR) {
-    return <Alert severity="error">{ error }</Alert>
-  }
-
-  if (status === COMPUTE_STATUS.CANCELLED) {
-    return <Alert severity="info">Computation cancelled.</Alert>
-  }
-
-  return null
+const NUMBER_VARIANT_LABELS = {
+  [NUMBER_VARIANTS.FAULT_TOLERANT]: 'fault-tolerant',
+  [NUMBER_VARIANTS.PROPORTIONAL]: 'ProportionalZeroForcing',
+  [NUMBER_VARIANTS.MAXIMUM_NULLITY]: 'maximum-nullity',
 }
 
-StatusRow.propTypes = {
-  status: PropTypes.string.isRequired,
-  elapsedMs: PropTypes.number.isRequired,
-  error: PropTypes.string,
+const SET_VARIANT_LABELS = {
+  [SET_VARIANTS.STANDARD]: 'standard',
+  [SET_VARIANTS.PSD]: 'psd',
+}
+
+const stopAccordionToggle = callback => event => {
+  event.stopPropagation()
+  callback()
+}
+
+const AnalysisAccordionHeader = ({
+  title,
+  variantLabel,
+  headerMeta,
+  computeLabel,
+  onCompute,
+  onCancel,
+}) => (
+  <Stack
+    direction="row"
+    spacing={ 1 }
+    alignItems="center"
+    justifyContent="space-between"
+    flexWrap="wrap"
+    sx={{ width: '100%', pr: 1 }}
+  >
+    <Stack spacing={ 0.75 } sx={{ minWidth: 0, flex: 1 }}>
+      <Typography variant="subtitle2">{ title }</Typography>
+      <Stack direction="row" spacing={ 0.75 } alignItems="center" flexWrap="wrap">
+        <Chip size="small" variant="outlined" label={ variantLabel } />
+        { headerMeta.showProgress && <CircularProgress size={ 14 } /> }
+        <Chip size="small" color={ headerMeta.statusChip.color } label={ headerMeta.statusChip.label } />
+        { headerMeta.showStale && <Chip size="small" color="warning" label="Stale" /> }
+        { headerMeta.elapsedLabel && (
+          <Typography variant="caption" color="text.secondary">
+            { headerMeta.elapsedLabel }
+          </Typography>
+        ) }
+      </Stack>
+    </Stack>
+
+    <Stack direction="row" spacing={ 1 } alignItems="center" onClick={ event => event.stopPropagation() }>
+      {
+        headerMeta.showCancel ? (
+          <Button size="small" color="warning" onClick={ stopAccordionToggle(onCancel) }>
+            Cancel
+          </Button>
+        ) : (
+          <Button size="small" variant="outlined" onClick={ stopAccordionToggle(onCompute) }>
+            { computeLabel }
+          </Button>
+        )
+      }
+    </Stack>
+  </Stack>
+)
+
+AnalysisAccordionHeader.propTypes = {
+  title: PropTypes.string.isRequired,
+  variantLabel: PropTypes.string.isRequired,
+  headerMeta: PropTypes.shape({
+    elapsedLabel: PropTypes.string,
+    showCancel: PropTypes.bool.isRequired,
+    showProgress: PropTypes.bool.isRequired,
+    showStale: PropTypes.bool.isRequired,
+    statusChip: PropTypes.shape({
+      color: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+    }).isRequired,
+  }).isRequired,
+  computeLabel: PropTypes.string.isRequired,
+  onCompute: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
 }
 
-export const ComputationPanel = () => {
+export const ComputationPanel = ({ analysisPanel }) => {
   const { graph } = useGraph()
   const numberAnalysis = graph.analysis.number
   const setsAnalysis = graph.analysis.sets
   const displayedSets = setsAnalysis.result?.sets || []
   const activeSet = setsAnalysis.activeSet || []
+  const numberHeaderMeta = createAnalysisHeaderMeta(numberAnalysis)
+  const setsHeaderMeta = createAnalysisHeaderMeta(setsAnalysis)
 
   return (
     <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
-      <Box sx={{
-        border: theme => `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
-        px: 1.5,
-        py: 1.25,
-      }}>
-        <Stack spacing={ 1.25 }>
-          <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
-            <Typography variant="subtitle2">Compute selected value</Typography>
-            { numberAnalysis.result && numberAnalysis.stale && <Chip size="small" color="warning" label="Stale" /> }
-          </Stack>
-
-          <ToggleButtonGroup
-            color="primary"
-            size="small"
-            exclusive
-            value={ numberAnalysis.variant }
-            onChange={ (event, nextVariant) => {
-              if (nextVariant) {
-                numberAnalysis.setVariant(nextVariant)
-              }
-            } }
-          >
-            <ToggleButton value={ NUMBER_VARIANTS.FAULT_TOLERANT }>fault-tolerant</ToggleButton>
-            <ToggleButton value={ NUMBER_VARIANTS.PROPORTIONAL }>ProportionalZeroForcing</ToggleButton>
-            <ToggleButton value={ NUMBER_VARIANTS.MAXIMUM_NULLITY }>maximum-nullity</ToggleButton>
-          </ToggleButtonGroup>
-
-          {
-            numberAnalysis.variant === NUMBER_VARIANTS.PROPORTIONAL && (
-              <Typography variant="body2" color="text.secondary">
-                Using α={ graph.forcing.alpha } and β={ graph.forcing.beta } from the transmission controls.
-              </Typography>
-            )
-          }
-
-          <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={ numberAnalysis.compute }
-              disabled={ numberAnalysis.status === COMPUTE_STATUS.RUNNING }
-            >
-              Compute value
-            </Button>
-            { numberAnalysis.status === COMPUTE_STATUS.SUCCESS && (
-              <Typography variant="body2" color="text.secondary">
-                Finished in { formatElapsed(numberAnalysis.elapsedMs) }
-              </Typography>
-            ) }
-          </Stack>
-
-          <StatusRow
-            status={ numberAnalysis.status }
-            elapsedMs={ numberAnalysis.elapsedMs }
-            error={ numberAnalysis.error }
+      <Accordion
+        disableGutters
+        square={ false }
+        expanded={ analysisPanel.expandedCard === ANALYSIS_CARD_KEYS.VALUE }
+        onChange={ () => analysisPanel.toggleExpandedCard(ANALYSIS_CARD_KEYS.VALUE) }
+      >
+        <AccordionSummary expandIcon={ <ExpandMoreIcon /> }>
+          <AnalysisAccordionHeader
+            title="Selected value"
+            variantLabel={ NUMBER_VARIANT_LABELS[numberAnalysis.variant] }
+            headerMeta={ numberHeaderMeta }
+            computeLabel="Compute"
+            onCompute={ numberAnalysis.compute }
             onCancel={ numberAnalysis.cancel }
           />
-
-          {
-            numberAnalysis.result && (
-              <Stack spacing={ 0.5 }>
-                <Typography variant="body1">
-                  { numberAnalysis.result.label }: <strong>{ numberAnalysis.result.value }</strong>
-                </Typography>
-                {
-                  numberAnalysis.stale && (
-                    <Typography variant="body2" color="warning.main">
-                      The displayed result was computed for a different graph or variant. Recompute to refresh it.
-                    </Typography>
-                  )
-                }
-              </Stack>
-            )
-          }
-        </Stack>
-      </Box>
-
-      <Box sx={{
-        border: theme => `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
-        px: 1.5,
-        py: 1.25,
-      }}>
-        <Stack spacing={ 1.25 }>
-          <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
-            <Typography variant="subtitle2">Compute minimum forcing sets up to graph automorphism</Typography>
-            { setsAnalysis.result && setsAnalysis.stale && <Chip size="small" color="warning" label="Stale" /> }
-          </Stack>
-
-          <ToggleButtonGroup
-            color="primary"
-            size="small"
-            exclusive
-            value={ setsAnalysis.variant }
-            onChange={ (event, nextVariant) => {
-              if (nextVariant) {
-                setsAnalysis.setVariant(nextVariant)
-              }
-            } }
+        </AccordionSummary>
+        <AccordionDetails sx={{ pt: 0 }}>
+          <Box
+            ref={ node => analysisPanel.restoreScrollPosition(ANALYSIS_CARD_KEYS.VALUE, node) }
+            onScroll={ analysisPanel.rememberScrollPosition(ANALYSIS_CARD_KEYS.VALUE) }
+            sx={{ maxHeight: 320, overflowY: 'auto', pr: 0.5 }}
           >
-            <ToggleButton value={ SET_VARIANTS.STANDARD }>standard</ToggleButton>
-            <ToggleButton value={ SET_VARIANTS.PSD }>psd</ToggleButton>
-          </ToggleButtonGroup>
+            <Stack spacing={ 1.25 }>
+              <ToggleButtonGroup
+                color="primary"
+                size="small"
+                exclusive
+                value={ numberAnalysis.variant }
+                onChange={ (event, nextVariant) => {
+                  if (nextVariant) {
+                    numberAnalysis.setVariant(nextVariant)
+                  }
+                } }
+              >
+                <ToggleButton value={ NUMBER_VARIANTS.FAULT_TOLERANT }>fault-tolerant</ToggleButton>
+                <ToggleButton value={ NUMBER_VARIANTS.PROPORTIONAL }>ProportionalZeroForcing</ToggleButton>
+                <ToggleButton value={ NUMBER_VARIANTS.MAXIMUM_NULLITY }>maximum-nullity</ToggleButton>
+              </ToggleButtonGroup>
 
-          <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={ setsAnalysis.compute }
-              disabled={ setsAnalysis.status === COMPUTE_STATUS.RUNNING }
-            >
-              Compute minimum sets
-            </Button>
-            { setsAnalysis.status === COMPUTE_STATUS.SUCCESS && (
-              <Typography variant="body2" color="text.secondary">
-                Finished in { formatElapsed(setsAnalysis.elapsedMs) }
-              </Typography>
-            ) }
-          </Stack>
+              {
+                numberAnalysis.variant === NUMBER_VARIANTS.PROPORTIONAL && (
+                  <Typography variant="body2" color="text.secondary">
+                    Using α={ graph.forcing.alpha } and β={ graph.forcing.beta } from the transmission controls.
+                  </Typography>
+                )
+              }
 
-          <StatusRow
-            status={ setsAnalysis.status }
-            elapsedMs={ setsAnalysis.elapsedMs }
-            error={ setsAnalysis.error }
+              { numberAnalysis.status === COMPUTE_STATUS.ERROR && <Alert severity="error">{ numberAnalysis.error }</Alert> }
+              { numberAnalysis.status === COMPUTE_STATUS.CANCELLED && <Alert severity="info">Computation cancelled.</Alert> }
+
+              {
+                numberAnalysis.result && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body1">
+                      { numberAnalysis.result.label }: <strong>{ numberAnalysis.result.value }</strong>
+                    </Typography>
+                    {
+                      numberAnalysis.stale && (
+                        <Typography variant="body2" color="warning.main">
+                          The displayed result was computed for a different graph or variant. Recompute to refresh it.
+                        </Typography>
+                      )
+                    }
+                  </Stack>
+                )
+              }
+            </Stack>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion
+        disableGutters
+        square={ false }
+        expanded={ analysisPanel.expandedCard === ANALYSIS_CARD_KEYS.MINIMUM_SETS }
+        onChange={ () => analysisPanel.toggleExpandedCard(ANALYSIS_CARD_KEYS.MINIMUM_SETS) }
+      >
+        <AccordionSummary expandIcon={ <ExpandMoreIcon /> }>
+          <AnalysisAccordionHeader
+            title="Minimum forcing sets"
+            variantLabel={ SET_VARIANT_LABELS[setsAnalysis.variant] }
+            headerMeta={ setsHeaderMeta }
+            computeLabel="Compute"
+            onCompute={ setsAnalysis.compute }
             onCancel={ setsAnalysis.cancel }
           />
+        </AccordionSummary>
+        <AccordionDetails sx={{ pt: 0 }}>
+          <Box
+            ref={ node => analysisPanel.restoreScrollPosition(ANALYSIS_CARD_KEYS.MINIMUM_SETS, node) }
+            onScroll={ analysisPanel.rememberScrollPosition(ANALYSIS_CARD_KEYS.MINIMUM_SETS) }
+            sx={{ maxHeight: 360, overflowY: 'auto', pr: 0.5 }}
+          >
+            <Stack spacing={ 1.25 }>
+              <ToggleButtonGroup
+                color="primary"
+                size="small"
+                exclusive
+                value={ setsAnalysis.variant }
+                onChange={ (event, nextVariant) => {
+                  if (nextVariant) {
+                    setsAnalysis.setVariant(nextVariant)
+                  }
+                } }
+              >
+                <ToggleButton value={ SET_VARIANTS.STANDARD }>standard</ToggleButton>
+                <ToggleButton value={ SET_VARIANTS.PSD }>psd</ToggleButton>
+              </ToggleButtonGroup>
 
-          {
-            setsAnalysis.result && (
-              <Stack spacing={ 0.75 }>
-                <Typography variant="body1">
-                  Minimum set size: <strong>{ setsAnalysis.result.number }</strong>
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Showing { displayedSets.length } representative set{ displayedSets.length === 1 ? '' : 's' }.
-                </Typography>
-                {
-                  setsAnalysis.result.truncated && (
-                    <Alert severity="warning">
-                      Showing only the first { graph.analysis.constants.maxDisplayedMinimumSets } representative sets for this graph and variant.
-                    </Alert>
-                  )
-                }
-                {
-                  setsAnalysis.stale && (
-                    <Typography variant="body2" color="warning.main">
-                      The displayed sets were computed for a different graph or variant. Recompute to refresh them.
+              { setsAnalysis.status === COMPUTE_STATUS.ERROR && <Alert severity="error">{ setsAnalysis.error }</Alert> }
+              { setsAnalysis.status === COMPUTE_STATUS.CANCELLED && <Alert severity="info">Computation cancelled.</Alert> }
+
+              {
+                setsAnalysis.result && (
+                  <Stack spacing={ 0.75 }>
+                    <Typography variant="body1">
+                      Minimum set size: <strong>{ setsAnalysis.result.number }</strong>
                     </Typography>
-                  )
-                }
-                {
-                  displayedSets.length > 0 && (
-                    <>
-                      <Stack direction="row" spacing={ 1 } alignItems="center">
-                        <Button
-                          size="small"
-                          startIcon={ <PreviousIcon /> }
-                          onClick={ setsAnalysis.previous }
-                          disabled={ setsAnalysis.activeIndex <= 0 }
-                        >
-                          Previous
-                        </Button>
-                        <Typography variant="body2">
-                          Set { setsAnalysis.activeIndex + 1 } of { displayedSets.length }
+                    <Typography variant="body2" color="text.secondary">
+                      Showing { displayedSets.length } representative set{ displayedSets.length === 1 ? '' : 's' }.
+                    </Typography>
+                    {
+                      setsAnalysis.result.truncated && (
+                        <Alert severity="warning">
+                          Showing only the first { graph.analysis.constants.maxDisplayedMinimumSets } representative sets for this graph and variant.
+                        </Alert>
+                      )
+                    }
+                    {
+                      setsAnalysis.stale && (
+                        <Typography variant="body2" color="warning.main">
+                          The displayed sets were computed for a different graph or variant. Recompute to refresh them.
                         </Typography>
-                        <Button
-                          size="small"
-                          endIcon={ <NextIcon /> }
-                          onClick={ setsAnalysis.next }
-                          disabled={ setsAnalysis.activeIndex >= displayedSets.length - 1 }
-                        >
-                          Next
-                        </Button>
-                      </Stack>
-                      <Typography variant="body2">
-                        Active set vertices: <strong>{ activeSet.length > 0 ? activeSet.join(', ') : '∅' }</strong>
-                      </Typography>
-                    </>
-                  )
-                }
-              </Stack>
-            )
-          }
-        </Stack>
-      </Box>
+                      )
+                    }
+                    {
+                      displayedSets.length > 0 && (
+                        <>
+                          <Stack direction="row" spacing={ 1 } alignItems="center" flexWrap="wrap">
+                            <Button
+                              size="small"
+                              startIcon={ <PreviousIcon /> }
+                              onClick={ setsAnalysis.previous }
+                              disabled={ setsAnalysis.activeIndex <= 0 }
+                            >
+                              Previous
+                            </Button>
+                            <Typography variant="body2">
+                              Set { setsAnalysis.activeIndex + 1 } of { displayedSets.length }
+                            </Typography>
+                            <Button
+                              size="small"
+                              endIcon={ <NextIcon /> }
+                              onClick={ setsAnalysis.next }
+                              disabled={ setsAnalysis.activeIndex >= displayedSets.length - 1 }
+                            >
+                              Next
+                            </Button>
+                          </Stack>
+                          <Typography variant="body2">
+                            Active set vertices: <strong>{ activeSet.length > 0 ? activeSet.join(', ') : '∅' }</strong>
+                          </Typography>
+                        </>
+                      )
+                    }
+                  </Stack>
+                )
+              }
+            </Stack>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
     </Stack>
   )
+}
+
+ComputationPanel.propTypes = {
+  analysisPanel: PropTypes.shape({
+    expandedCard: PropTypes.string,
+    rememberScrollPosition: PropTypes.func.isRequired,
+    restoreScrollPosition: PropTypes.func.isRequired,
+    toggleExpandedCard: PropTypes.func.isRequired,
+  }).isRequired,
 }

@@ -20,7 +20,6 @@ import {
 } from '@mui/icons-material'
 import { useGraph } from './graph'
 import { useApp } from '../context'
-import { ComputationPanel } from './computation-panel'
 
 export const Colorbar = () => {
   const theme = useTheme()
@@ -80,13 +79,13 @@ export const Colorbar = () => {
       alignItems: 'stretch',
       ...conditionalStyles,
     }}>
-      <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
-        <Stack
-          spacing={ 1.5 }
-          direction={ compact ? 'column' : 'row' }
-          justifyContent="space-between"
-          alignItems={ compact ? 'stretch' : 'center' }
-        >
+      <Stack
+        spacing={ 1.5 }
+        sx={{ width: '100%' }}
+        direction={ compact ? 'column' : 'row' }
+        justifyContent="space-between"
+        alignItems={ compact ? 'stretch' : 'center' }
+      >
           <Stack spacing={ 1 } direction="row" alignItems="center">
             <Box sx={{ width: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {
@@ -171,8 +170,6 @@ export const Colorbar = () => {
               >Step</Button>
             </Tooltip>
           </Stack>
-        </Stack>
-        <ComputationPanel />
       </Stack>
     </Box>
   )
