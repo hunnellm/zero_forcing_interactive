@@ -46,6 +46,23 @@ export const Instructions = () => {
           The <Typography color="primary" component="span">Reset</Typography> button
           (↩) clears all colored nodes and the step history at once.
         </Typography>
+        <Typography paragraph>
+          The compute panels are <Typography color="primary" component="span">on-demand only</Typography>:
+          nothing is recomputed when the graph or variant changes until you click one of the
+          compute buttons. The first compute action finds the selected value variant, while the
+          second computes minimum forcing sets for the selected standard or PSD variant and keeps
+          one representative from each automorphism class of the current graph.
+        </Typography>
+        <Typography paragraph>
+          Long computations show a spinner, elapsed time, and a
+          <Typography color="primary" component="span"> Cancel</Typography> button.
+          Computed results stay visible for this browser session. If you edit the graph or switch
+          variants afterwards, the old result stays on screen with a
+          <Typography color="primary" component="span"> Stale</Typography> badge until you recompute.
+          Minimum-set results also include <Typography color="primary" component="span">Previous</Typography> /
+          <Typography color="primary" component="span">Next</Typography> navigation, the active vertex list,
+          and a warning if the representative-set display cap is reached.
+        </Typography>
       </Box>
 
       <Box>

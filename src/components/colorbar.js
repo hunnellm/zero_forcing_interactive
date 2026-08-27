@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material'
 import { useGraph } from './graph'
 import { useApp } from '../context'
+import { ComputationPanel } from './computation-panel'
 
 export const Colorbar = () => {
   const theme = useTheme()
@@ -76,93 +77,102 @@ export const Colorbar = () => {
       padding: theme.spacing(2),
       zIndex: 9,
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'stretch',
       ...conditionalStyles,
     }}>
-      <Stack spacing={ 1 } direction="row" alignItems="center">
-        <Box sx={{ width: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {
-            graph.coloredNodes.size === graph.nodes.length ? (
-              <Tooltip title="All Nodes are Colored!" placement="bottom">
-                <CheckIcon sx={{ color: theme.palette.text.primary }} fontSize="medium" />
-              </Tooltip>
-            ) : <CircleIcon sx={{ color: theme.palette.text.secondary }} fontSize="small" />
-          }
-        </Box>
-        <Typography component={ Stack } justifyContent="center" color="text.primary">
-          { graph.coloredNodes.size } of { graph.nodes.length } colored nodes
-        </Typography>
-      </Stack>
-      <Stack spacing={ 1.5 } direction="row" alignItems="center">
-        <ToggleButtonGroup
-          color="primary"
-          value={ graph.forcing.mode }
-          exclusive
-          size="small"
-          onChange={ (event, nextMode) => {
-            if (nextMode) {
-              graph.forcing.setMode(nextMode)
-            }
-          } }
+      <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
+        <Stack
+          spacing={ 1.5 }
+          direction={ compact ? 'column' : 'row' }
+          justifyContent="space-between"
+          alignItems={ compact ? 'stretch' : 'center' }
         >
-          <ToggleButton value={ graph.forcing.modes.ZERO }>Zero Forcing</ToggleButton>
-          <ToggleButton value={ graph.forcing.modes.PSD }>PSD Zero Forcing</ToggleButton>
-          <ToggleButton value={ graph.forcing.modes.TRANSMISSION }>Transmission Forcing</ToggleButton>
-        </ToggleButtonGroup>
-        { transmissionModeActive && (
-          <TextField
-            label="α"
-            type="number"
-            size="small"
-            value={ graph.forcing.alpha }
-            onChange={ event => graph.forcing.setAlpha(event.target.value) }
-            inputProps={{ min: 0, max: 1, step: 0.01 }}
-            sx={{ width: 95 }}
-          />
-        ) }
-        { transmissionModeActive && (
-          <TextField
-            label="β"
-            type="number"
-            size="small"
-            value={ graph.forcing.beta }
-            onChange={ event => graph.forcing.setBeta(event.target.value) }
-            inputProps={{ min: 0, max: 1, step: 0.01 }}
-            sx={{ width: 95 }}
-          />
-        ) }
-      </Stack>
-      <Stack spacing={ 2 } direction="row">
-        <Tooltip title="Reset Coloring" placement="top">
-          <Stack justifyContent="center">
-            <IconButton
-              color="primary"
-              size="small"
-              onClick={ graph.uncolorAllNodes }
-              disabled={ graph.coloredNodes.size === 0 }
-            ><ResetIcon fontSize="small" /></IconButton>
+          <Stack spacing={ 1 } direction="row" alignItems="center">
+            <Box sx={{ width: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {
+                graph.coloredNodes.size === graph.nodes.length ? (
+                  <Tooltip title="All Nodes are Colored!" placement="bottom">
+                    <CheckIcon sx={{ color: theme.palette.text.primary }} fontSize="medium" />
+                  </Tooltip>
+                ) : <CircleIcon sx={{ color: theme.palette.text.secondary }} fontSize="small" />
+              }
+            </Box>
+            <Typography component={ Stack } justifyContent="center" color="text.primary">
+              { graph.coloredNodes.size } of { graph.nodes.length } colored nodes
+            </Typography>
           </Stack>
-        </Tooltip>
-        <Tooltip title="Step Back" placement="top">
-          <Stack justifyContent="center">
-            <IconButton
+          <Stack spacing={ 1.5 } direction="row" alignItems="center" flexWrap="wrap">
+            <ToggleButtonGroup
               color="primary"
+              value={ graph.forcing.mode }
+              exclusive
               size="small"
-              onClick={ stepBack }
-              disabled={ !canStepBack }
-            ><StepBackIcon fontSize="small" /></IconButton>
+              onChange={ (event, nextMode) => {
+                if (nextMode) {
+                  graph.forcing.setMode(nextMode)
+                }
+              } }
+            >
+              <ToggleButton value={ graph.forcing.modes.ZERO }>Zero Forcing</ToggleButton>
+              <ToggleButton value={ graph.forcing.modes.PSD }>PSD Zero Forcing</ToggleButton>
+              <ToggleButton value={ graph.forcing.modes.TRANSMISSION }>Transmission Forcing</ToggleButton>
+            </ToggleButtonGroup>
+            { transmissionModeActive && (
+              <TextField
+                label="α"
+                type="number"
+                size="small"
+                value={ graph.forcing.alpha }
+                onChange={ event => graph.forcing.setAlpha(event.target.value) }
+                inputProps={{ min: 0, max: 1, step: 0.01 }}
+                sx={{ width: 95 }}
+              />
+            ) }
+            { transmissionModeActive && (
+              <TextField
+                label="β"
+                type="number"
+                size="small"
+                value={ graph.forcing.beta }
+                onChange={ event => graph.forcing.setBeta(event.target.value) }
+                inputProps={{ min: 0, max: 1, step: 0.01 }}
+                sx={{ width: 95 }}
+              />
+            ) }
           </Stack>
-        </Tooltip>
-        <Tooltip title="Apply Coloring Rule" placement="top">
-          <Button
-            variant="contained"
-            color="primary"
-            endIcon={ <StepIcon /> }
-            onClick={ colorStep }
-            sx={{ padding: '1rem' }}
-          >Step</Button>
-        </Tooltip>
+          <Stack spacing={ 2 } direction="row">
+            <Tooltip title="Reset Coloring" placement="top">
+              <Stack justifyContent="center">
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={ graph.uncolorAllNodes }
+                  disabled={ graph.coloredNodes.size === 0 }
+                ><ResetIcon fontSize="small" /></IconButton>
+              </Stack>
+            </Tooltip>
+            <Tooltip title="Step Back" placement="top">
+              <Stack justifyContent="center">
+                <IconButton
+                  color="primary"
+                  size="small"
+                  onClick={ stepBack }
+                  disabled={ !canStepBack }
+                ><StepBackIcon fontSize="small" /></IconButton>
+              </Stack>
+            </Tooltip>
+            <Tooltip title="Apply Coloring Rule" placement="top">
+              <Button
+                variant="contained"
+                color="primary"
+                endIcon={ <StepIcon /> }
+                onClick={ colorStep }
+                sx={{ padding: '1rem' }}
+              >Step</Button>
+            </Tooltip>
+          </Stack>
+        </Stack>
+        <ComputationPanel />
       </Stack>
     </Box>
   )

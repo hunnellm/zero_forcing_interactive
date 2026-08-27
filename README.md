@@ -23,6 +23,37 @@ eligible unfilled neighbor each step (same forcing eligibility as zero forcing),
 becomes filled once its weight is strictly greater than `beta`. Both `alpha` and `beta` are user
 inputs constrained to `[0, 1]`.
 
+## On-demand computation
+
+The control bar also includes two separate on-demand computation actions:
+
+- **Compute value** — computes the selected invariant only when clicked. The available
+  value variants are **fault-tolerant**, **ProportionalZeroForcing**, and
+  **maximum-nullity**.
+- **Compute minimum sets** — computes minimum forcing sets for the selected
+  **standard** or **psd** variant, reduced to one representative from each orbit under
+  the automorphism group of the current graph.
+
+While a computation is running the app shows a spinner, elapsed time, and a
+**Cancel** button. Results are cached for the current browser session by graph and
+selected variant, so re-running an unchanged computation reuses the cached result.
+
+For **maximum-nullity**, the current app uses the exact graph6 lookup from
+`hunnellm/maximum-nullity`, so this computation is available for graphs on at most
+8 vertices.
+
+If the graph or selected variant changes after a computation finishes, the old result
+remains visible with a **Stale** badge until you recompute it.
+
+### Minimum-set navigation
+
+- Use **Previous** / **Next** to step through the displayed representative sets.
+- The app shows the current position as `Set i of N`.
+- The active representative set is highlighted on the graph and its vertex IDs are
+  listed textually below the controls.
+- To keep the UI responsive, the app currently displays at most **50** representative
+  sets per computation and shows a warning when truncation occurs.
+
 ## Draw Graph Mode
 
 Click the **pencil icon (✏)** in the toolbar to enter Draw Graph mode.
@@ -97,4 +128,3 @@ Tests cover:
 - `src/lib/graph6.test.js` — graph6 string parser
 - `src/lib/matrix-utils.test.js` — adjacency-matrix mutation helpers (`addNodeToMatrix`, `addEdgeToMatrix`, `removeNodeFromMatrix`)
 - `src/lib/tikz.test.js` — TikZ export utility (color mapping, coordinate conversion, label escaping, output generation)
-
