@@ -591,25 +591,41 @@ export const computeSetsResult = ({
   checkCancelled = () => false,
 }) => {
   const poll = createWorkPoller(checkCancelled)
-  if (!Object.values(SET_VARIANTS).includes(variant)) {
-    throw new Error(`Unsupported minimum-set variant: ${variant}`)
-  }
 
-  if (variant === SET_VARIANTS.FAULT_TOLERANT) {
-    const result = findRepresentativeFaultTolerantMinimumSets(adjacencyData, 1, cap, poll)
-    return {
-      variant,
-      label: 'Minimum fault-tolerant forcing sets up to graph automorphism',
-      ...result,
+  // Single explicit dispatch per SET_VARIANTS entry. Keeping this as one
+  // exhaustive switch (rather than a separate "is this a known variant"
+  // pre-check plus independent if-branches) ensures the recognized-variant
+  // check and the actual dispatch can never drift out of sync with each
+  // other or with SET_VARIANTS.
+  switch (variant) {
+    case SET_VARIANTS.FAULT_TOLERANT: {
+      const result = findRepresentativeFaultTolerantMinimumSets(adjacencyData, 1, cap, poll)
+      return {
+        variant,
+        label: 'Minimum fault-tolerant forcing sets up to graph automorphism',
+        ...result,
+      }
     }
-  }
 
-  const result = findRepresentativeMinimumSets(adjacencyData, variant, cap, poll)
-  return {
-    variant,
-    label: variant === SET_VARIANTS.PSD
-      ? 'Minimum PSD forcing sets up to graph automorphism'
-      : 'Minimum forcing sets up to graph automorphism',
-    ...result,
+    case SET_VARIANTS.PSD: {
+      const result = findRepresentativeMinimumSets(adjacencyData, variant, cap, poll)
+      return {
+        variant,
+        label: 'Minimum PSD forcing sets up to graph automorphism',
+        ...result,
+      }
+    }
+
+    case SET_VARIANTS.STANDARD: {
+      const result = findRepresentativeMinimumSets(adjacencyData, variant, cap, poll)
+      return {
+        variant,
+        label: 'Minimum forcing sets up to graph automorphism',
+        ...result,
+      }
+    }
+
+    default:
+      throw new Error(`Unsupported minimum-set variant: ${variant}`)
   }
 }
