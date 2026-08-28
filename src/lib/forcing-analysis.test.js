@@ -133,4 +133,30 @@ assert.throws(
   'Cancelled computations should surface a cancellation error',
 )
 
+const faultTolerantSets = analysis.computeSetsResult({
+  adjacencyData: pathGraph5,
+  variant: shared.SET_VARIANTS.FAULT_TOLERANT,
+})
+assert.strictEqual(faultTolerantSets.number, 2, 'P5 should have fault-tolerant forcing number 2')
+assert.deepStrictEqual(faultTolerantSets.sets, [[0, 4]], 'FTZF minimum sets on P5 should collapse to one automorphism representative {0,4}')
+assert.strictEqual(faultTolerantSets.truncated, false, 'Small FTZF representative lists should not be truncated')
+
+const truncatedFaultTolerantSets = analysis.computeSetsResult({
+  adjacencyData: pathGraph5,
+  variant: shared.SET_VARIANTS.FAULT_TOLERANT,
+  cap: 0,
+})
+assert.strictEqual(truncatedFaultTolerantSets.sets.length, 0, 'FTZF representative sets should be capped at the requested display limit')
+assert.strictEqual(truncatedFaultTolerantSets.truncated, true, 'FTZF representative sets should report truncation when the display cap is exceeded')
+
+assert.throws(
+  () => analysis.computeSetsResult({
+    adjacencyData: pathGraph5,
+    variant: shared.SET_VARIANTS.FAULT_TOLERANT,
+    checkCancelled: () => true,
+  }),
+  error => error && error.name === 'CancellationError',
+  'Cancelled FTZF computations should surface a cancellation error',
+)
+
 console.log('forcing analysis tests passed')
