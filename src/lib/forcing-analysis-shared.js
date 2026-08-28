@@ -13,17 +13,22 @@ export const COMPUTE_OPERATIONS = {
   SETS: 'sets',
 }
 
-export const NUMBER_VARIANTS = {
+// Single source of truth for forcing-number variants. Import this constant
+// (rather than re-declaring the string literals) everywhere a variant is
+// parsed, dispatched, or rendered so the UI and analysis code can never fall
+// out of sync with one another.
+export const NUMBER_VARIANTS = Object.freeze({
   FAULT_TOLERANT: 'fault-tolerant',
   PROPORTIONAL: 'ProportionalZeroForcing',
   MAXIMUM_NULLITY: 'maximum-nullity',
-}
+})
 
-export const SET_VARIANTS = {
+// Single source of truth for minimum-set variants. See NUMBER_VARIANTS above.
+export const SET_VARIANTS = Object.freeze({
   STANDARD: 'standard',
   PSD: 'psd',
   FAULT_TOLERANT: 'fault-tolerant',
-}
+})
 
 // UI cap for representative minimum forcing sets. This keeps navigation responsive
 // while still giving users a substantial sample of distinct automorphism classes.

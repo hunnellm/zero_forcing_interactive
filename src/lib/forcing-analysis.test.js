@@ -159,4 +159,35 @@ assert.throws(
   'Cancelled FTZF computations should surface a cancellation error',
 )
 
+// Regression coverage: every recognized SET_VARIANTS entry must be handled by
+// computeSetsResult's dispatcher. This guards against the class of bug where
+// a new variant is added to SET_VARIANTS (or the dispatcher's cases drift
+// out of sync with it) but the dispatcher throws "Unsupported minimum-set
+// variant" for it at runtime.
+Object.values(shared.SET_VARIANTS).forEach(variant => {
+  assert.doesNotThrow(
+    () => analysis.computeSetsResult({ adjacencyData: pathGraph5, variant }),
+    `computeSetsResult should recognize and dispatch the "${variant}" SET_VARIANTS entry`,
+  )
+})
+
+// Passing a raw string that matches a known variant value (as arrives from
+// worker postMessage payloads, localStorage, or the UI toggle) must also be
+// recognized, independent of strict `===` identity with the SET_VARIANTS
+// object references.
+const faultTolerantByLiteral = analysis.computeSetsResult({
+  adjacencyData: pathGraph5,
+  variant: 'fault-tolerant',
+})
+assert.strictEqual(faultTolerantByLiteral.number, 2, 'The literal "fault-tolerant" string should dispatch identically to SET_VARIANTS.FAULT_TOLERANT')
+
+assert.throws(
+  () => analysis.computeSetsResult({
+    adjacencyData: pathGraph5,
+    variant: 'not-a-real-variant',
+  }),
+  /Unsupported minimum-set variant: not-a-real-variant/,
+  'Unrecognized variants should still surface a clear unsupported-variant error',
+)
+
 console.log('forcing analysis tests passed')
