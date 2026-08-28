@@ -133,4 +133,38 @@ for (let i = 0; i < k4Positions.length; i++) {
   }
 }
 
+// Redraw parity regression test: computeInitialLayout is the single shared
+// algorithm used for both the first-display layout pass and manual redraw
+// (see GraphProvider.triggerManualRedraw). Since node x/y are not part of
+// the function's inputs (only ids + edges are), re-invoking it for the
+// exact same graph -- as a "redraw" would -- must reproduce the exact same
+// balancing/placement as the original "first display" call, even when the
+// nodes carry stale/previous positions from prior interaction.
+const firstDisplayNodes = [{ id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }]
+const firstDisplayEdges = [
+  { source: 0, target: 1 },
+  { source: 1, target: 2 },
+  { source: 2, target: 3 },
+  { source: 3, target: 0 },
+]
+const firstDisplayResult = computeInitialLayout(firstDisplayNodes, firstDisplayEdges, 500, 400)
+
+// Simulate nodes that have since been dragged around / perturbed by prior
+// interaction -- a redraw should ignore those stale coordinates entirely.
+const redrawInputNodes = firstDisplayNodes.map(({ id }) => ({ id, x: 9999, y: -9999 }))
+const redrawResult = computeInitialLayout(redrawInputNodes, firstDisplayEdges, 500, 400)
+
+for (const { id } of firstDisplayNodes) {
+  assert.strictEqual(
+    redrawResult.get(id).x,
+    firstDisplayResult.get(id).x,
+    `redraw x should match first-display x for node ${id}`,
+  )
+  assert.strictEqual(
+    redrawResult.get(id).y,
+    firstDisplayResult.get(id).y,
+    `redraw y should match first-display y for node ${id}`,
+  )
+}
+
 console.log('layout tests passed')

@@ -24,6 +24,16 @@ const removeNodeFromMatrix = (matrix, nodeIndex) => {
     .map(row => row.filter((_, j) => j !== nodeIndex))
 }
 
+const buildEdgeListFromMatrix = adjacencyMatrix => {
+  const edges = []
+  adjacencyMatrix.data.forEach((row, i) => {
+    for (let j = 0; j < i; j += 1) {
+      if (row[j] === 1) edges.push({ source: i, target: j })
+    }
+  })
+  return edges
+}
+
 // addNodeToMatrix tests
 
 const singleNode = addNodeToMatrix([[0]])
@@ -86,5 +96,28 @@ assert.deepStrictEqual(removedLast, [[0, 1], [1, 0]])
 const origRemove = [[0, 1], [1, 0]]
 removeNodeFromMatrix(origRemove, 0)
 assert.deepStrictEqual(origRemove, [[0, 1], [1, 0]], 'removeNodeFromMatrix must not mutate input')
+
+// buildEdgeListFromMatrix tests
+
+// No edges -> empty list
+assert.deepStrictEqual(buildEdgeListFromMatrix({ data: [[0, 0], [0, 0]] }), [])
+
+// Each undirected edge is emitted exactly once (lower triangle only)
+const triangleMatrix = { data: [
+  [0, 1, 1],
+  [1, 0, 1],
+  [1, 1, 0],
+] }
+assert.deepStrictEqual(buildEdgeListFromMatrix(triangleMatrix), [
+  { source: 1, target: 0 },
+  { source: 2, target: 0 },
+  { source: 2, target: 1 },
+])
+
+// The same adjacency matrix always yields the same edge list -- this is the
+// invariant that lets both the initial layout pass and manual redraw feed
+// computeInitialLayout with an identical edge set for identical graphs.
+const rebuilt = buildEdgeListFromMatrix(triangleMatrix)
+assert.deepStrictEqual(rebuilt, buildEdgeListFromMatrix(triangleMatrix))
 
 console.log('matrix-utils tests passed')

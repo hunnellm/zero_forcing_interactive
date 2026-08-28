@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material'
 import ForceGraph2D from './force-graph'
 import { useGraph } from './context'
 import { FORCING_MODES, formatNodeLabel } from '../../lib/forcing'
+import { isContinuousRedrawEnabled } from '../../lib/graph-redraw'
 
 export const Graph = ({ nodes, edges, height, width }) => {
   const theme = useTheme()
@@ -32,7 +33,9 @@ export const Graph = ({ nodes, edges, height, width }) => {
     }
   }, [])
 
-  // Fit all nodes into view after initial layout is computed
+  // Fit all nodes into view after (re)layout is computed. This effect is the
+  // single, shared code path for both the initial layout pass and manual
+  // redraw (graph.triggerManualRedraw), so both fit the camera identically.
   useEffect(() => {
     if (graph.needsFit && fgRef.current) {
       // Defer one frame so ForceGraph has processed the new node positions
@@ -43,12 +46,13 @@ export const Graph = ({ nodes, edges, height, width }) => {
     }
   }, [graph.needsFit, graph.clearNeedsFit, fitToScreen])
 
-  const handleEngineStop = useCallback(() => {
-    if (graph.manualRedrawActive) {
-      graph.clearManualRedraw()
-      fitToScreen(400, 20)
-    }
-  }, [graph.manualRedrawActive, graph.clearManualRedraw, fitToScreen])
+  // Whether the physics simulation is allowed to run continuously. This is
+  // the single source of truth for "Auto Redraw" -- nothing else in this
+  // component may re-enable continuous ticking when it evaluates to false.
+  const continuousRedrawEnabled = isContinuousRedrawEnabled({
+    drawMode: graph.drawMode,
+    autoRedraw: graph.settings.autoRedraw,
+  })
 
   const requestReheat = useCallback(() => {
     if (fgRef.current) {
@@ -227,12 +231,6 @@ export const Graph = ({ nodes, edges, height, width }) => {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [fgRef.current])
 
-  useEffect(() => {
-    if (graph.manualRedrawActive) {
-      requestReheat()
-    }
-  }, [graph.manualRedrawActive, requestReheat])
-
   // Reheat simulation whenever nodes or edges change in draw mode so newly
   // added nodes animate into a visible position.
   useEffect(() => {
@@ -256,12 +254,11 @@ export const Graph = ({ nodes, edges, height, width }) => {
       onNodeHover={ graph.drawMode ? undefined : handleHoverNode }
       onNodeDrag={ graph.drawMode ? undefined : handleHoverNode }
       onBackgroundClick={ handleBackgroundClick }
-      onEngineStop={ graph.manualRedrawActive ? handleEngineStop : undefined }
       linkColor={ () => theme.palette.grey[500] }
       linkWidth={ 2 }
       nodeLabel={ node => graph.settings.showLabels ? getNodeLabelText(node.id) : '' }
       autoPauseRedraw={ false }
-      cooldownTicks={ (!graph.drawMode && (graph.settings.autoRedraw || graph.manualRedrawActive)) ? Infinity : 0 }
+      cooldownTicks={ continuousRedrawEnabled ? Infinity : 0 }
     />
   )
 }

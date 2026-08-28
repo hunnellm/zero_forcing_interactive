@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { Matrix } from 'ml-matrix'
-import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix } from '../../lib/matrix-utils'
+import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix, buildEdgeListFromMatrix } from '../../lib/matrix-utils'
 import { encodeGraph6 } from '../../lib/graph6'
 import { computeInitialLayout } from '../../lib/layout'
 import {
@@ -28,6 +28,13 @@ import {
 const initialGraph = []
 const createAnalysisWorker = () => new Worker(new URL('../../lib/forcing-analysis-worker.js', import.meta.url))
 
+// Normalised coordinate space used for layout computation; the ForceGraph
+// camera adapts independently, so this only needs to be internally
+// consistent. Shared between the initial layout pass and manual redraw so
+// both produce identical balancing/placement.
+const LAYOUT_WIDTH = 500
+const LAYOUT_HEIGHT = 400
+
 const GraphContext = createContext({})
 
 export const useGraph = () => useContext(GraphContext)
@@ -50,7 +57,6 @@ export const GraphProvider = ({ children }) => {
   const [alpha, setAlphaState] = useLocalStorage('transmission-alpha', 0.5)
   const [beta, setBetaState] = useLocalStorage('transmission-beta', 0.5)
   const [drawMode, setDrawMode] = useState(false)
-  const [manualRedrawActive, setManualRedrawActive] = useState(false)
   const [needsFit, setNeedsFit] = useState(false)
   const [nodeWeights, setNodeWeights] = useState(() => initialWeights(initialGraph.length, new Set()))
   const [usedTransmissions, setUsedTransmissions] = useState(() => new Set())
@@ -73,15 +79,8 @@ export const GraphProvider = ({ children }) => {
       const rawNodes = [...Array(adjacencyMatrix.rows).keys()].map(i => prevMap.get(i) || { id: i })
       const needsLayout = rawNodes.some(n => !Number.isFinite(n.x))
       if (needsLayout && rawNodes.length > 0) {
-        // Build edge list from the adjacency matrix for the layout pass
-        const rawEdges = []
-        adjacencyMatrix.data.forEach((row, i) => {
-          for (let j = 0; j < i; j += 1) {
-            if (row[j] === 1) rawEdges.push({ source: i, target: j })
-          }
-        })
         // Use a normalised coordinate space; the ForceGraph camera adapts
-        const positions = computeInitialLayout(rawNodes, rawEdges, 500, 400)
+        const positions = computeInitialLayout(rawNodes, buildEdgeListFromMatrix(adjacencyMatrix), LAYOUT_WIDTH, LAYOUT_HEIGHT)
         const laid = rawNodes.map(n => {
           const p = positions.get(n.id)
           return p ? { ...n, x: p.x, y: p.y } : n
@@ -91,15 +90,7 @@ export const GraphProvider = ({ children }) => {
       }
       return rawNodes
     })
-    let _edges = []
-    adjacencyMatrix.data.forEach((row, i) => {
-      for (let j = 0; j < i; j += 1) {
-        if (row[j] === 1) {
-          _edges.push({ source: i, target: j })
-        }
-      }
-    })
-    setEdges(_edges)
+    setEdges(buildEdgeListFromMatrix(adjacencyMatrix))
   }, [adjacencyMatrix])
 
   useEffect(() => {
@@ -523,9 +514,23 @@ export const GraphProvider = ({ children }) => {
 
   const toggleShowLabels = useCallback(() => setShowLabels(v => !v), [])
 
-  const triggerManualRedraw = useCallback(() => setManualRedrawActive(true), [])
-
-  const clearManualRedraw = useCallback(() => setManualRedrawActive(false), [])
+  // Explicit "redraw" action. This intentionally reuses the exact same
+  // layout algorithm/parameters (computeInitialLayout) used to place the
+  // graph on first display, so a redraw always reproduces the same
+  // deterministic balancing regardless of the Auto Redraw toggle. It works
+  // whether Auto Redraw is on or off, and never depends on or mutates the
+  // continuous physics-simulation state used for Auto Redraw.
+  const triggerManualRedraw = useCallback(() => {
+    setNodes(prev => {
+      if (!prev.length) return prev
+      const positions = computeInitialLayout(prev, buildEdgeListFromMatrix(adjacencyMatrix), LAYOUT_WIDTH, LAYOUT_HEIGHT)
+      return prev.map(n => {
+        const p = positions.get(n.id)
+        return p ? { ...n, x: p.x, y: p.y, fx: undefined, fy: undefined } : n
+      })
+    })
+    setNeedsFit(true)
+  }, [adjacencyMatrix])
 
   const clearNeedsFit = useCallback(() => setNeedsFit(false), [])
 
@@ -538,7 +543,6 @@ export const GraphProvider = ({ children }) => {
     setNodeWeights(initialWeights(0, new Set()))
     setUsedTransmissions(new Set())
     setDrawMode(false)
-    setManualRedrawActive(false)
   }, [setMatrix])
 
   const addNode = useCallback((position = null) => {
@@ -592,9 +596,7 @@ export const GraphProvider = ({ children }) => {
         removeNode,
         drawMode,
         toggleDrawMode,
-        manualRedrawActive,
         triggerManualRedraw,
-        clearManualRedraw,
         needsFit,
         clearNeedsFit,
         resetGraph,

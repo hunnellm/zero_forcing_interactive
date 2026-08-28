@@ -42,3 +42,23 @@ export const removeNodeFromMatrix = (matrix, nodeIndex) => {
     .filter((_, i) => i !== nodeIndex)
     .map(row => row.filter((_, j) => j !== nodeIndex))
 }
+
+/**
+ * Builds a plain { source, target } edge list from an adjacency matrix's
+ * underlying 2D data array. Each undirected edge is emitted exactly once
+ * (only the lower triangle is scanned). This is the single source of truth
+ * used both for the initial graph layout and for any later redraw, so both
+ * see the exact same edge set.
+ *
+ * @param {{data: number[][]}} adjacencyMatrix - ml-matrix Matrix instance (or matrix-like object with a `.data` 2D array)
+ * @returns {Array<{source: number, target: number}>}
+ */
+export const buildEdgeListFromMatrix = adjacencyMatrix => {
+  const edges = []
+  adjacencyMatrix.data.forEach((row, i) => {
+    for (let j = 0; j < i; j += 1) {
+      if (row[j] === 1) edges.push({ source: i, target: j })
+    }
+  })
+  return edges
+}
