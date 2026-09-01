@@ -23,7 +23,7 @@ import {
 import { useGraph } from './graph'
 import { ANALYSIS_CARD_KEYS } from './analysis-panel-state'
 import { createAnalysisHeaderMeta } from './computation-panel-shared'
-import { ADVANCED_VARIANTS, COMPUTE_STATUS, NUMBER_VARIANTS, SET_VARIANTS } from '../lib/forcing-analysis-shared'
+import { ADVANCED_VARIANTS, COMPUTE_STATUS, MAX_LOOP_VERTICES, NUMBER_VARIANTS, SET_VARIANTS } from '../lib/forcing-analysis-shared'
 
 const NUMBER_VARIANT_LABELS = {
   [NUMBER_VARIANTS.FAULT_TOLERANT]: 'fault-tolerant',
@@ -67,6 +67,7 @@ const AnalysisAccordionHeader = ({
   computeLabel,
   onCompute,
   onCancel,
+  computeDisabled,
 }) => (
   <Stack
     direction="row"
@@ -98,7 +99,7 @@ const AnalysisAccordionHeader = ({
             Cancel
           </Button>
         ) : (
-          <Button size="small" variant="outlined" onClick={ stopAccordionToggle(onCompute) }>
+          <Button size="small" variant="outlined" onClick={ stopAccordionToggle(onCompute) } disabled={ computeDisabled }>
             { computeLabel }
           </Button>
         )
@@ -123,6 +124,11 @@ AnalysisAccordionHeader.propTypes = {
   computeLabel: PropTypes.string.isRequired,
   onCompute: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  computeDisabled: PropTypes.bool,
+}
+
+AnalysisAccordionHeader.defaultProps = {
+  computeDisabled: false,
 }
 
 export const ComputationPanel = ({ analysisPanel }) => {
@@ -137,6 +143,7 @@ export const ComputationPanel = ({ analysisPanel }) => {
   const loopHeaderMeta = createAnalysisHeaderMeta(loopAnalysis)
   const vertexCount = graph.adjacencyMatrix.rows
   const loopSelectionRequired = REQUIRES_LOOP_SELECTION.has(loopAnalysis.variant)
+  const loopVertexLimitExceeded = vertexCount > MAX_LOOP_VERTICES
 
   return (
     <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
@@ -328,6 +335,7 @@ export const ComputationPanel = ({ analysisPanel }) => {
             computeLabel="Compute"
             onCompute={ loopAnalysis.compute }
             onCancel={ loopAnalysis.cancel }
+            computeDisabled={ loopVertexLimitExceeded }
           />
         </AccordionSummary>
         <AccordionDetails sx={{ pt: 0 }}>
@@ -342,6 +350,15 @@ export const ComputationPanel = ({ analysisPanel }) => {
                   <Alert severity="warning">
                     The enhanced zero forcing backend is unavailable. Start it with <code>npm run server</code> to
                     enable looped forcing, maximum looped forcing, and fort/blocking-set analysis.
+                  </Alert>
+                )
+              }
+
+              {
+                loopVertexLimitExceeded && (
+                  <Alert severity="warning">
+                    This graph has { vertexCount } vertices, which exceeds the { MAX_LOOP_VERTICES }-vertex limit
+                    supported by these computations. Remove vertices to enable this analysis.
                   </Alert>
                 )
               }
