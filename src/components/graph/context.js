@@ -1,10 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
+import { useApp } from '../../context'
 import { Matrix } from 'ml-matrix'
 import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix, buildEdgeListFromMatrix } from '../../lib/matrix-utils'
 import { encodeGraph6 } from '../../lib/graph6'
 import { computeInitialLayout } from '../../lib/layout'
+import {
+  computeLoopBlockingSets,
+  computeLoopedForcing,
+  computeLoopForts,
+  computeMaximumLoopedForcing,
+  isCancelledError,
+} from '../../lib/api'
 import {
   FORCING_MODES,
   clampParameter,
@@ -12,6 +20,7 @@ import {
   runForcingStep,
 } from '../../lib/forcing'
 import {
+  ADVANCED_VARIANTS,
   COMPUTE_OPERATIONS,
   COMPUTE_STATUS,
   MAX_DISPLAYED_MINIMUM_SETS,
@@ -27,6 +36,13 @@ import {
 
 const initialGraph = []
 const createAnalysisWorker = () => new Worker(new URL('../../lib/forcing-analysis-worker.js', import.meta.url))
+
+const ADVANCED_API_CALLS = {
+  [ADVANCED_VARIANTS.LOOPED]: computeLoopedForcing,
+  [ADVANCED_VARIANTS.MAXIMUM_LOOPED]: computeMaximumLoopedForcing,
+  [ADVANCED_VARIANTS.FORT]: computeLoopForts,
+  [ADVANCED_VARIANTS.BLOCKING_SETS]: computeLoopBlockingSets,
+}
 
 // Normalised coordinate space used for layout computation; the ForceGraph
 // camera adapts independently, so this only needs to be internally
@@ -66,12 +82,18 @@ export const GraphProvider = ({ children }) => {
   const [numberComputation, setNumberComputation] = useState(() => createOperationState())
   const [setsComputation, setSetsComputation] = useState(() => createOperationState())
   const [activeMinimumSetIndex, setActiveMinimumSetIndex] = useState(0)
+  const [loopVariant, setLoopVariant] = useLocalStorage('loop-analysis-variant', ADVANCED_VARIANTS.LOOPED)
+  const [loopComputation, setLoopComputation] = useState(() => createOperationState())
   const numberCacheRef = useRef(new Map())
   const setsCacheRef = useRef(new Map())
+  const loopCacheRef = useRef(new Map())
   const numberWorkerRef = useRef(null)
   const setsWorkerRef = useRef(null)
+  const loopRequestRef = useRef(null)
   const numberTimerRef = useRef(null)
   const setsTimerRef = useRef(null)
+  const loopTimerRef = useRef(null)
+  const { backendAvailable, loopConfiguration } = useApp()
   
   useEffect(() => {
     setNodes(prev => {
@@ -232,6 +254,13 @@ export const GraphProvider = ({ children }) => {
     ...setsVariantConfig,
   }), [graph6String, setsVariantConfig])
 
+  const loopCacheKey = useMemo(() => createCacheKey({
+    graph6String,
+    operation: loopVariant,
+    variant: loopVariant,
+    loopedVertices: loopConfiguration.loopedVertices,
+  }), [graph6String, loopVariant, loopConfiguration.loopedVertices])
+
   const clearElapsedTimer = useCallback(timerRef => {
     if (timerRef.current) {
       window.clearInterval(timerRef.current)
@@ -263,6 +292,88 @@ export const GraphProvider = ({ children }) => {
       status: COMPUTE_STATUS.CANCELLED,
     }))
   }, [clearElapsedTimer, terminateWorker])
+
+  const cancelLoopComputation = useCallback(() => {
+    if (loopRequestRef.current) {
+      loopRequestRef.current.abort()
+      loopRequestRef.current = null
+    }
+    clearElapsedTimer(loopTimerRef)
+    setLoopComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.CANCELLED,
+    }))
+  }, [clearElapsedTimer])
+
+  const runLoopComputation = useCallback(() => {
+    const cachedResult = loopCacheRef.current.get(loopCacheKey)
+    if (cachedResult) {
+      setLoopComputation({
+        status: COMPUTE_STATUS.SUCCESS,
+        result: cachedResult,
+        resultKey: loopCacheKey,
+        error: null,
+        elapsedMs: 0,
+      })
+      return
+    }
+
+    if (loopRequestRef.current) {
+      loopRequestRef.current.abort()
+    }
+    clearElapsedTimer(loopTimerRef)
+
+    const controller = new AbortController()
+    loopRequestRef.current = controller
+    const startedAt = Date.now()
+
+    setLoopComputation(prev => ({
+      ...prev,
+      status: COMPUTE_STATUS.RUNNING,
+      error: null,
+      elapsedMs: 0,
+    }))
+
+    loopTimerRef.current = window.setInterval(() => {
+      setLoopComputation(prev => (
+        prev.status === COMPUTE_STATUS.RUNNING
+          ? { ...prev, elapsedMs: Date.now() - startedAt }
+          : prev
+      ))
+    }, 100)
+
+    const runComputation = ADVANCED_API_CALLS[loopVariant]
+
+    runComputation({
+      adjacencyMatrix: adjacencyMatrix.data,
+      loopedVertices: loopConfiguration.loopedVertices,
+      signal: controller.signal,
+    }).then(response => {
+      if (loopRequestRef.current !== controller) return
+      loopRequestRef.current = null
+      clearElapsedTimer(loopTimerRef)
+      const elapsedMs = Date.now() - startedAt
+      loopCacheRef.current.set(loopCacheKey, response.result)
+      setLoopComputation({
+        status: COMPUTE_STATUS.SUCCESS,
+        result: response.result,
+        resultKey: loopCacheKey,
+        error: null,
+        elapsedMs,
+      })
+    }).catch(error => {
+      // If cancelled, cancelLoopComputation already set CANCELLED status.
+      if (isCancelledError(error) || loopRequestRef.current !== controller) return
+      loopRequestRef.current = null
+      clearElapsedTimer(loopTimerRef)
+      setLoopComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: error.message || 'Unable to compute the requested value.',
+        elapsedMs: Date.now() - startedAt,
+      }))
+    })
+  }, [adjacencyMatrix.data, clearElapsedTimer, loopCacheKey, loopConfiguration.loopedVertices, loopVariant])
 
   const runNumberComputation = useCallback(() => {
     const cachedResult = numberCacheRef.current.get(numberCacheKey)
@@ -444,6 +555,11 @@ export const GraphProvider = ({ children }) => {
     terminateWorker(setsWorkerRef)
     clearElapsedTimer(numberTimerRef)
     clearElapsedTimer(setsTimerRef)
+    clearElapsedTimer(loopTimerRef)
+    if (loopRequestRef.current) {
+      loopRequestRef.current.abort()
+      loopRequestRef.current = null
+    }
   }, [clearElapsedTimer, terminateWorker])
 
   const numberResultStale = useMemo(
@@ -454,6 +570,11 @@ export const GraphProvider = ({ children }) => {
   const setsResultStale = useMemo(
     () => isResultStale(setsComputation.resultKey, setsCacheKey),
     [setsComputation.resultKey, setsCacheKey],
+  )
+
+  const loopResultStale = useMemo(
+    () => isResultStale(loopComputation.resultKey, loopCacheKey),
+    [loopComputation.resultKey, loopCacheKey],
   )
 
   const displayedMinimumSets = setsComputation.result?.sets || []
@@ -649,6 +770,21 @@ export const GraphProvider = ({ children }) => {
             next: stepToNextMinimumSet,
             compute: runSetsComputation,
             cancel: cancelSetsComputation,
+          },
+          loop: {
+            variant: loopVariant,
+            setVariant: setLoopVariant,
+            status: loopComputation.status,
+            elapsedMs: loopComputation.elapsedMs,
+            result: loopComputation.result,
+            error: loopComputation.error,
+            stale: loopResultStale,
+            compute: runLoopComputation,
+            cancel: cancelLoopComputation,
+            backendAvailable,
+            loopedVertices: loopConfiguration.loopedVertices,
+            toggleLoopedVertex: loopConfiguration.toggleLoopedVertex,
+            clearLoopedVertices: loopConfiguration.clearLoopedVertices,
           },
         },
       },

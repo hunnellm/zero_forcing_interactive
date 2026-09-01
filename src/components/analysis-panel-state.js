@@ -14,6 +14,7 @@ export const ANALYSIS_DRAWER_OVERLAY_BREAKPOINT = 900
 export const ANALYSIS_CARD_KEYS = {
   VALUE: 'value',
   MINIMUM_SETS: 'minimum-sets',
+  LOOP: 'loop',
 }
 
 const getStorage = storage => storage || (typeof window !== 'undefined' ? window.localStorage : null)

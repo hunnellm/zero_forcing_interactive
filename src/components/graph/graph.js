@@ -166,6 +166,8 @@ export const Graph = ({ nodes, edges, height, width }) => {
     [graph.analysis.sets.activeSet],
   )
 
+  const loopedVertices = graph.analysis.loop.loopedVertices
+
   const nodeCanvasObject = useCallback(({ x, y, id }, context) => {
     if (graph.drawMode && drawSrcNode === id) {
       // Draw a distinct selection ring in draw mode
@@ -175,15 +177,27 @@ export const Graph = ({ nodes, edges, height, width }) => {
     } else if (highlightedNodes.has(id)) {
       paintRing({ x, y }, context)
     }
+    const isLooped = loopedVertices.has(id)
     context.fillStyle = graph.coloredNodes.has(id)
       ? graph.settings.color
       : '#fff'
     context.beginPath()
     context.arc(x, y, graph.settings.nodeSize, 0, 2 * Math.PI, false)
-    context.lineWidth = 1
-    context.strokeStyle = theme.palette.grey[800]
+    // Looped vertices (those carrying a loop in the selected loop
+    // configuration for looped zero forcing) get a thicker, distinctly
+    // coloured border so they remain visually distinguishable at a glance.
+    context.lineWidth = isLooped ? 3 : 1
+    context.strokeStyle = isLooped ? theme.palette.warning.main : theme.palette.grey[800]
     context.stroke()
     context.fill()
+    if (isLooped) {
+      // Small loop glyph in the upper-right of the node, echoing the
+      // self-loop notation used for looped zero forcing.
+      context.beginPath()
+      context.arc(x + graph.settings.nodeSize, y - graph.settings.nodeSize, 2.5, 0, 2 * Math.PI, false)
+      context.fillStyle = theme.palette.warning.main
+      context.fill()
+    }
     if (graph.settings.showLabels) {
   const labelText = getNodeLabelText(id)
   context.font = '11px Sans-Serif'
@@ -209,7 +223,7 @@ export const Graph = ({ nodes, edges, height, width }) => {
   // Restore canvas alpha state back to 1.0 for the next items
   context.restore() 
 }
-  }, [analysisHighlightedNodes, graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, theme.palette, getNodeLabelText])
+  }, [analysisHighlightedNodes, graph.coloredNodes, graph.settings, graph.drawMode, drawSrcNode, highlightedNodes, loopedVertices, theme.palette, getNodeLabelText])
 
   const nodePaint = ({ x, y }, color, context) => {
     context.fillStyle = color
