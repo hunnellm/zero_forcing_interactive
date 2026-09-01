@@ -3,7 +3,14 @@ import PropTypes from 'prop-types'
 import { useLocalStorage } from '../../hooks'
 import { useApp } from '../../context'
 import { Matrix } from 'ml-matrix'
-import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix, buildEdgeListFromMatrix } from '../../lib/matrix-utils'
+import {
+  addNodeToMatrix,
+  addEdgeToMatrix,
+  removeNodeFromMatrix,
+  buildEdgeListFromMatrix,
+  isValidAdjacencyMatrix,
+  sanitizeAdjacencyMatrix,
+} from '../../lib/matrix-utils'
 import { encodeGraph6 } from '../../lib/graph6'
 import { computeInitialLayout } from '../../lib/layout'
 import { formatLoopAnalysisError } from '../computation-panel-shared'
@@ -73,9 +80,30 @@ export const useGraph = () => useContext(GraphContext)
 export const GraphProvider = ({ children }) => {
   // matrix will be the 2d array
   const [matrix, setMatrix] = useLocalStorage('adjacency-matrix', initialGraph)
+
+  // Persisted `adjacency-matrix` localStorage data can become malformed
+  // (ragged rows, wrong dimensions) if it was written by an older/buggy
+  // build or corrupted externally. Left unchecked, that reaches the
+  // loop-analysis API and throws "adjacencyMatrix must be square (n x n)."
+  // on every reload. Repair it once on mount to the nearest valid symmetric
+  // square binary matrix (see sanitizeAdjacencyMatrix) rather than resetting
+  // to an empty graph, so a user's existing valid graph is preserved.
+  useEffect(() => {
+    if (!isValidAdjacencyMatrix(matrix)) {
+      setMatrix(sanitizeAdjacencyMatrix(matrix))
+    }
+    // Intentionally runs once, on mount, to repair whatever was loaded from
+    // localStorage; every other matrix update already goes through the
+    // (now-hardened) mutation helpers in matrix-utils.
+    // eslint-disable-next-line
+  }, [])
+
   // adjacencyMatrix will be the instance of the Matrix object,
-  // which provides all those calculation helpers.
-  const adjacencyMatrix = useMemo(() => new Matrix(matrix), [matrix])
+  // which provides all those calculation helpers. Sanitize defensively here
+  // too (not just in the mount effect above), since `new Matrix(...)` throws
+  // synchronously on a ragged array and the effect above only runs after the
+  // first render.
+  const adjacencyMatrix = useMemo(() => new Matrix(sanitizeAdjacencyMatrix(matrix)), [matrix])
   const graph6String = useMemo(() => encodeGraph6(matrix), [matrix])
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
