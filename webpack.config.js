@@ -1,4 +1,5 @@
 const path = require('path')
+const webpack = require('webpack')
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
@@ -21,6 +22,13 @@ const plugins = [
   // }),
   new ESLintPlugin({
     extensions: ['./src', 'js'],
+  }),
+  // Frontend base URL for the enhanced zero forcing backend (see
+  // src/lib/api.js and server.js). Defaults to '' so requests are relative
+  // (works with the dev-server proxy below, or a same-origin production
+  // deployment); set FORCING_API_BASE_URL at build time to point elsewhere.
+  new webpack.DefinePlugin({
+    'process.env.FORCING_API_BASE_URL': JSON.stringify(process.env.FORCING_API_BASE_URL || ''),
   }),
 ]
 
@@ -90,6 +98,15 @@ module.exports = {
     },
     hot: true,
     static: path.resolve(__dirname, 'dist'),
+    // Proxy backend API requests to the local Express server (see
+    // `npm run server`) so the frontend can call relative /api/forcing/*
+    // paths in development without CORS configuration.
+    proxy: [
+      {
+        context: ['/api'],
+        target: `http://localhost:${ process.env.FORCING_API_PORT || 5051 }`,
+      },
+    ],
     setupMiddlewares: (middlewares, devServer) => {
       if (!devServer) {
         throw new Error('webpack-dev-server is not defined')

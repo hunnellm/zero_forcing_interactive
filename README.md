@@ -51,6 +51,27 @@ For **maximum-nullity**, the current app uses the exact graph6 lookup from
 If the graph or selected variant changes after a computation finishes, the old result remains
 visible with a **Stale** badge until you recompute it.
 
+### Looped forcing & fort analysis (backend-powered)
+
+A third accordion card, **Looped forcing & fort analysis**, exposes the advanced zero forcing
+algorithms from [`hunnellm/enhanced-zf`](https://github.com/hunnellm/enhanced-zf) via a small
+Express backend (see [Backend API](#backend-api) below):
+
+- **looped forcing** — the looped zero forcing number and minimum sets for a chosen loop
+  configuration.
+- **maximum looped** — the maximum looped zero forcing number over every possible loop
+  configuration.
+- **loop forts** — all loop forts and inclusion-minimal loop forts for a chosen loop
+  configuration.
+- **blocking sets** — the loop blocking number and minimum loop blocking sets.
+
+Use the vertex checkboxes to choose which vertices carry a loop (not shown for **maximum
+looped**, which searches over all configurations). Looped vertices are also highlighted on the
+graph with a thicker, distinctly-coloured border and a small loop glyph.
+
+If the backend isn't running, the card shows a warning and the underlying requests will fail
+gracefully with an error message; start it with `npm run server` (see below).
+
 ### Minimum-set navigation
 
 - Use **Previous** / **Next** inside the expanded minimum-sets card to step through the displayed representative sets.
@@ -83,6 +104,40 @@ inspected or exported via the **Generate Graph** tab in the right-side panel.
 - NPM 8.6.0
 
 Install dependencies with `npm i`. Start a local development server with `npm start`.
+
+## Backend API
+
+Advanced looped zero forcing computations (looped forcing, maximum looped forcing, loop forts,
+and loop blocking sets) run in a small Express server (`server.js`) that wraps a vendored,
+trimmed-down copy of the [`hunnellm/enhanced-zf`](https://github.com/hunnellm/enhanced-zf) Python
+library (`python/loop_zf.py`, invoked via `python/cli.py`).
+
+Requires Python 3 (no third-party packages) on the `PATH` as `python3`.
+
+Start the backend with:
+
+```
+npm run server
+```
+
+It listens on port `5051` by default (override with the `FORCING_API_PORT` environment
+variable) and exposes:
+
+- `GET /api/forcing/health` — basic health check.
+- `POST /api/forcing/looped` — looped zero forcing number + minimum sets.
+- `POST /api/forcing/maximum-looped` — maximum looped zero forcing number over all loop
+  configurations.
+- `POST /api/forcing/forts` — loop forts and minimal loop forts.
+- `POST /api/forcing/blocking-sets` — loop blocking number and minimum blocking sets.
+
+Each `POST` endpoint accepts a JSON body with an `adjacencyMatrix` (square, symmetric, binary,
+at most 20 vertices) and, where applicable, a `loopedVertices` array of vertex indices; it
+returns `{ result, meta }` on success or `{ error }` on failure.
+
+During local development, run the backend (`npm run server`) alongside the frontend
+(`npm start`); the webpack dev server proxies `/api` requests to the backend automatically. In
+production, set the `FORCING_API_BASE_URL` environment variable at build time to point the
+frontend at the deployed backend's base URL (leave unset for same-origin deployments).
 
 ## Graph input
 
@@ -136,3 +191,5 @@ Tests cover:
 - `src/lib/tikz.test.js` — TikZ export utility (color mapping, coordinate conversion, label escaping, output generation)
 - `src/components/analysis-panel-state.test.js` — persisted drawer state, responsive overlay rules, and accordion state helpers
 - `src/components/computation-panel.test.js` — compact analysis header status, stale, cancel, and elapsed metadata
+- `src/lib/api.test.js` — frontend backend-API client (success, error, network failure, and cancellation handling)
+- `server.test.js` — backend request validation and `/api/forcing/*` endpoints

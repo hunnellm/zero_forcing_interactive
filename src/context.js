@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useMemo } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useMediaQuery } from '@mui/material'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { useLocalStorage } from './hooks'
 import { useAnalysisPanelState } from './components/analysis-panel-state'
+import { checkBackendAvailable } from './lib/api'
 
 const AppContext = createContext({})
 
@@ -57,6 +58,36 @@ export const AppProvider = ({ children }) => {
   const [mode, setMode] = useLocalStorage('mode', MODES.light)
   const analysisPanel = useAnalysisPanelState()
 
+  // Selected loop configuration for the looped zero forcing backend (see
+  // src/lib/api.js and graph/context.js). A vertex index appears in this set
+  // when it carries a loop in the currently selected configuration.
+  const [loopedVertices, setLoopedVertices] = useState(() => new Set())
+  // null = not yet checked, true/false = last known reachability of the
+  // enhanced zero forcing backend (see server.js).
+  const [backendAvailable, setBackendAvailable] = useState(null)
+
+  const toggleLoopedVertex = useCallback(i => {
+    setLoopedVertices(prev => {
+      const next = new Set(prev)
+      if (next.has(i)) {
+        next.delete(i)
+      } else {
+        next.add(i)
+      }
+      return next
+    })
+  }, [])
+
+  const clearLoopedVertices = useCallback(() => setLoopedVertices(new Set()), [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    checkBackendAvailable(controller.signal)
+      .then(available => setBackendAvailable(available))
+      .catch(() => setBackendAvailable(false))
+    return () => controller.abort()
+  }, [])
+
   const otherMode = useMemo(() => mode === MODES.light ? MODES.dark : MODES.light, [mode])
 
   const toggleMode = useCallback(() => setMode(otherMode), [otherMode])
@@ -71,6 +102,13 @@ export const AppProvider = ({ children }) => {
       compact,
       MODES, mode, setMode, toggleMode, otherMode,
       analysisPanel,
+      backendAvailable,
+      loopConfiguration: {
+        loopedVertices,
+        setLoopedVertices,
+        toggleLoopedVertex,
+        clearLoopedVertices,
+      },
     }}>
       <ThemeProvider theme={ theme }>
         { children }

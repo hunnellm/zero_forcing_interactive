@@ -77,6 +77,33 @@ const proportionalKeyChanged = shared.createCacheKey({
 
 assert.notStrictEqual(proportionalKey, proportionalKeyChanged, 'Cache keys should include proportional forcing parameters')
 
+const loopedKeyA = shared.createCacheKey({
+  graph6String,
+  operation: shared.ADVANCED_VARIANTS.LOOPED,
+  variant: shared.ADVANCED_VARIANTS.LOOPED,
+  loopedVertices: new Set([2, 0]),
+})
+const loopedKeyB = shared.createCacheKey({
+  graph6String,
+  operation: shared.ADVANCED_VARIANTS.LOOPED,
+  variant: shared.ADVANCED_VARIANTS.LOOPED,
+  loopedVertices: new Set([0, 2]),
+})
+const loopedKeyDifferentConfig = shared.createCacheKey({
+  graph6String,
+  operation: shared.ADVANCED_VARIANTS.LOOPED,
+  variant: shared.ADVANCED_VARIANTS.LOOPED,
+  loopedVertices: new Set([0, 1]),
+})
+
+assert.strictEqual(loopedKeyA, loopedKeyB, 'Cache keys for loop configurations should be independent of Set insertion order')
+assert.notStrictEqual(loopedKeyA, loopedKeyDifferentConfig, 'Cache keys should change when the loop configuration changes')
+assert.deepStrictEqual(
+  Object.values(shared.ADVANCED_VARIANTS).sort(),
+  ['blocking-sets', 'fort', 'looped', 'maximum-looped'],
+  'ADVANCED_VARIANTS should expose the looped-forcing, maximum-looped, fort, and blocking-set variants',
+)
+
 const faultTolerant = analysis.computeNumberResult({
   adjacencyData: pathGraph5,
   graph6String,

@@ -11,7 +11,30 @@ export const COMPUTE_STATUS = {
 export const COMPUTE_OPERATIONS = {
   NUMBER: 'number',
   SETS: 'sets',
+  LOOPED: 'looped',
+  MAXIMUM_LOOPED: 'maximum-looped',
+  FORTS: 'forts',
+  BLOCKING_SETS: 'blocking-sets',
 }
+
+// Forcing "mode" for the looped-forcing card: whether the standard (simple)
+// rule or the looped rule (any vertex may force with a unique white neighbor
+// in the looped graph) applies. Kept distinct from NUMBER_VARIANTS/SET_VARIANTS
+// above, which describe variants of simple/PSD/transmission forcing.
+export const FORCING_RULE = Object.freeze({
+  SIMPLE: 'simple',
+  LOOPED: 'looped',
+})
+
+// Single source of truth for the advanced (backend-powered) analysis modes
+// introduced alongside looped zero forcing. See computation-panel.js and
+// graph/context.js for where these are dispatched/rendered.
+export const ADVANCED_VARIANTS = Object.freeze({
+  LOOPED: 'looped',
+  MAXIMUM_LOOPED: 'maximum-looped',
+  FORT: 'fort',
+  BLOCKING_SETS: 'blocking-sets',
+})
 
 // Single source of truth for forcing-number variants. Import this constant
 // (rather than re-declaring the string literals) everywhere a variant is
@@ -44,12 +67,16 @@ export const createNumberVariantConfig = ({ variant, alpha, beta }) => (
 
 export const createSetsVariantConfig = variant => ({ variant })
 
-export const createCacheKey = ({ graph6String, operation, variant, alpha, beta }) => JSON.stringify({
+// loopedVertices is accepted as an iterable (e.g. a Set) of vertex indices;
+// it is normalised to a sorted array so equivalent configurations always
+// produce the same cache key regardless of insertion order.
+export const createCacheKey = ({ graph6String, operation, variant, alpha, beta, loopedVertices }) => JSON.stringify({
   graph6String,
   operation,
   variant,
   alpha: alpha ?? null,
   beta: beta ?? null,
+  loopedVertices: loopedVertices ? [...loopedVertices].sort((a, b) => a - b) : null,
 })
 
 export const isResultStale = (resultKey, currentKey) => Boolean(resultKey && currentKey && resultKey !== currentKey)

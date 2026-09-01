@@ -6,8 +6,10 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -21,7 +23,7 @@ import {
 import { useGraph } from './graph'
 import { ANALYSIS_CARD_KEYS } from './analysis-panel-state'
 import { createAnalysisHeaderMeta } from './computation-panel-shared'
-import { COMPUTE_STATUS, NUMBER_VARIANTS, SET_VARIANTS } from '../lib/forcing-analysis-shared'
+import { ADVANCED_VARIANTS, COMPUTE_STATUS, NUMBER_VARIANTS, SET_VARIANTS } from '../lib/forcing-analysis-shared'
 
 const NUMBER_VARIANT_LABELS = {
   [NUMBER_VARIANTS.FAULT_TOLERANT]: 'fault-tolerant',
@@ -34,6 +36,24 @@ const SET_VARIANT_LABELS = {
   [SET_VARIANTS.PSD]: 'psd',
   [SET_VARIANTS.FAULT_TOLERANT]: 'fault-tolerant',
 }
+
+const LOOP_VARIANT_LABELS = {
+  [ADVANCED_VARIANTS.LOOPED]: 'looped forcing',
+  [ADVANCED_VARIANTS.MAXIMUM_LOOPED]: 'maximum looped forcing',
+  [ADVANCED_VARIANTS.FORT]: 'loop forts',
+  [ADVANCED_VARIANTS.BLOCKING_SETS]: 'loop blocking sets',
+}
+
+// Loop vertex selection only applies to variants that operate on a fixed
+// loop configuration; "maximum looped forcing" searches over every possible
+// configuration instead.
+const REQUIRES_LOOP_SELECTION = new Set([
+  ADVANCED_VARIANTS.LOOPED,
+  ADVANCED_VARIANTS.FORT,
+  ADVANCED_VARIANTS.BLOCKING_SETS,
+])
+
+const formatVertexSet = vertices => (vertices.length > 0 ? vertices.join(', ') : '∅')
 
 const stopAccordionToggle = callback => event => {
   event.stopPropagation()
@@ -109,10 +129,14 @@ export const ComputationPanel = ({ analysisPanel }) => {
   const { graph } = useGraph()
   const numberAnalysis = graph.analysis.number
   const setsAnalysis = graph.analysis.sets
+  const loopAnalysis = graph.analysis.loop
   const displayedSets = setsAnalysis.result?.sets || []
   const activeSet = setsAnalysis.activeSet || []
   const numberHeaderMeta = createAnalysisHeaderMeta(numberAnalysis)
   const setsHeaderMeta = createAnalysisHeaderMeta(setsAnalysis)
+  const loopHeaderMeta = createAnalysisHeaderMeta(loopAnalysis)
+  const vertexCount = graph.adjacencyMatrix.rows
+  const loopSelectionRequired = REQUIRES_LOOP_SELECTION.has(loopAnalysis.variant)
 
   return (
     <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
@@ -283,6 +307,153 @@ export const ComputationPanel = ({ analysisPanel }) => {
                       )
                     }
                   </Stack>
+                )
+              }
+            </Stack>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion
+        disableGutters
+        square={ false }
+        expanded={ analysisPanel.expandedCard === ANALYSIS_CARD_KEYS.LOOP }
+        onChange={ () => analysisPanel.toggleExpandedCard(ANALYSIS_CARD_KEYS.LOOP) }
+      >
+        <AccordionSummary expandIcon={ <ExpandMoreIcon /> }>
+          <AnalysisAccordionHeader
+            title="Looped forcing & fort analysis"
+            variantLabel={ LOOP_VARIANT_LABELS[loopAnalysis.variant] }
+            headerMeta={ loopHeaderMeta }
+            computeLabel="Compute"
+            onCompute={ loopAnalysis.compute }
+            onCancel={ loopAnalysis.cancel }
+          />
+        </AccordionSummary>
+        <AccordionDetails sx={{ pt: 0 }}>
+          <Box
+            ref={ node => analysisPanel.restoreScrollPosition(ANALYSIS_CARD_KEYS.LOOP, node) }
+            onScroll={ analysisPanel.rememberScrollPosition(ANALYSIS_CARD_KEYS.LOOP) }
+            sx={{ maxHeight: 360, overflowY: 'auto', pr: 0.5 }}
+          >
+            <Stack spacing={ 1.25 }>
+              {
+                loopAnalysis.backendAvailable === false && (
+                  <Alert severity="warning">
+                    The enhanced zero forcing backend is unavailable. Start it with <code>npm run server</code> to
+                    enable looped forcing, maximum looped forcing, and fort/blocking-set analysis.
+                  </Alert>
+                )
+              }
+
+              <ToggleButtonGroup
+                color="primary"
+                size="small"
+                exclusive
+                value={ loopAnalysis.variant }
+                onChange={ (event, nextVariant) => {
+                  if (nextVariant) {
+                    loopAnalysis.setVariant(nextVariant)
+                  }
+                } }
+              >
+                <ToggleButton value={ ADVANCED_VARIANTS.LOOPED }>looped forcing</ToggleButton>
+                <ToggleButton value={ ADVANCED_VARIANTS.MAXIMUM_LOOPED }>maximum looped</ToggleButton>
+                <ToggleButton value={ ADVANCED_VARIANTS.FORT }>loop forts</ToggleButton>
+                <ToggleButton value={ ADVANCED_VARIANTS.BLOCKING_SETS }>blocking sets</ToggleButton>
+              </ToggleButtonGroup>
+
+              {
+                loopSelectionRequired && vertexCount > 0 && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body2" color="text.secondary">
+                      Looped vertices (vertices that carry a loop in this configuration):
+                    </Typography>
+                    <Stack direction="row" flexWrap="wrap">
+                      {
+                        [...Array(vertexCount).keys()].map(i => (
+                          <FormControlLabel
+                            key={ i }
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={ loopAnalysis.loopedVertices.has(i) }
+                                onChange={ () => loopAnalysis.toggleLoopedVertex(i) }
+                              />
+                            }
+                            label={ `${ i }` }
+                          />
+                        ))
+                      }
+                    </Stack>
+                  </Stack>
+                )
+              }
+
+              { loopAnalysis.status === COMPUTE_STATUS.ERROR && <Alert severity="error">{ loopAnalysis.error }</Alert> }
+              { loopAnalysis.status === COMPUTE_STATUS.CANCELLED && <Alert severity="info">Computation cancelled.</Alert> }
+
+              {
+                loopAnalysis.result && loopAnalysis.variant === ADVANCED_VARIANTS.LOOPED && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body1">
+                      Looped zero forcing number: <strong>{ loopAnalysis.result.number }</strong>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      { loopAnalysis.result.sets.length } minimum set{ loopAnalysis.result.sets.length === 1 ? '' : 's' }: {
+                        loopAnalysis.result.sets.map(set => `{${ formatVertexSet(set) }}`).join(', ')
+                      }
+                    </Typography>
+                  </Stack>
+                )
+              }
+
+              {
+                loopAnalysis.result && loopAnalysis.variant === ADVANCED_VARIANTS.MAXIMUM_LOOPED && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body1">
+                      Maximum looped zero forcing number: <strong>{ loopAnalysis.result.number }</strong>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Achieved by { loopAnalysis.result.configurations.length } loop configuration{ loopAnalysis.result.configurations.length === 1 ? '' : 's' }, including {
+                        loopAnalysis.result.configurations.slice(0, 5).map(cfg => `{${ formatVertexSet(cfg.loopedVertices) }}`).join(', ')
+                      }.
+                    </Typography>
+                  </Stack>
+                )
+              }
+
+              {
+                loopAnalysis.result && loopAnalysis.variant === ADVANCED_VARIANTS.FORT && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body1">
+                      { loopAnalysis.result.minimalForts.length } minimal loop fort{ loopAnalysis.result.minimalForts.length === 1 ? '' : 's' } of { loopAnalysis.result.forts.length } total.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      { loopAnalysis.result.minimalForts.map(fort => `{${ formatVertexSet(fort) }}`).join(', ') || 'None found.' }
+                    </Typography>
+                  </Stack>
+                )
+              }
+
+              {
+                loopAnalysis.result && loopAnalysis.variant === ADVANCED_VARIANTS.BLOCKING_SETS && (
+                  <Stack spacing={ 0.5 }>
+                    <Typography variant="body1">
+                      Loop blocking number: <strong>{ loopAnalysis.result.number }</strong>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      { loopAnalysis.result.sets.map(set => `{${ formatVertexSet(set) }}`).join(', ') || 'None found.' }
+                    </Typography>
+                  </Stack>
+                )
+              }
+
+              {
+                loopAnalysis.stale && (
+                  <Typography variant="body2" color="warning.main">
+                    The displayed result was computed for a different graph, variant, or loop configuration. Recompute to refresh it.
+                  </Typography>
                 )
               }
             </Stack>
