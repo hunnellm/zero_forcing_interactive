@@ -144,6 +144,7 @@ export const ComputationPanel = ({ analysisPanel }) => {
   const vertexCount = graph.adjacencyMatrix.rows
   const loopSelectionRequired = REQUIRES_LOOP_SELECTION.has(loopAnalysis.variant)
   const loopVertexLimitExceeded = vertexCount > MAX_LOOP_VERTICES
+  const loopComputeUnavailable = loopAnalysis.workerSupported === false && loopAnalysis.backendAvailable === false
 
   return (
     <Stack spacing={ 1.5 } sx={{ width: '100%' }}>
@@ -335,7 +336,7 @@ export const ComputationPanel = ({ analysisPanel }) => {
             computeLabel="Compute"
             onCompute={ loopAnalysis.compute }
             onCancel={ loopAnalysis.cancel }
-            computeDisabled={ loopVertexLimitExceeded }
+            computeDisabled={ loopVertexLimitExceeded || loopComputeUnavailable }
           />
         </AccordionSummary>
         <AccordionDetails sx={{ pt: 0 }}>
@@ -346,11 +347,20 @@ export const ComputationPanel = ({ analysisPanel }) => {
           >
             <Stack spacing={ 1.25 }>
               {
-                loopAnalysis.backendAvailable === false && (
+                loopAnalysis.workerSupported === false && loopAnalysis.backendAvailable === false && (
                   <Alert severity="warning">
-                    The enhanced zero forcing backend is unavailable. Start it with <code>npm run server</code> to
-                    enable looped forcing, maximum looped forcing, and fort/blocking-set analysis.
+                    In-browser analysis isn&apos;t supported in this browser, and the enhanced zero forcing backend
+                    is unavailable. Start it with <code>npm run server</code> to enable looped forcing, maximum
+                    looped forcing, and fort/blocking-set analysis.
                   </Alert>
+                )
+              }
+
+              {
+                loopAnalysis.workerSupported !== false && (
+                  <Typography variant="body2" color="text.secondary">
+                    These computations run in your browser by default - no backend server is required.
+                  </Typography>
                 )
               }
 

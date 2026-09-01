@@ -29,6 +29,12 @@ const plugins = [
   // deployment); set FORCING_API_BASE_URL at build time to point elsewhere.
   new webpack.DefinePlugin({
     'process.env.FORCING_API_BASE_URL': JSON.stringify(process.env.FORCING_API_BASE_URL || ''),
+    // When set to the string 'true', forces looped forcing / maximum looped
+    // forcing / fort / blocking-set analysis to always use the backend
+    // `/api/forcing/*` endpoints instead of the default in-browser Web
+    // Worker (see src/lib/api.js, src/workers/forcing.worker.js). Useful for
+    // debugging/parity checks; leave unset for normal use.
+    'process.env.REACT_APP_FORCE_BACKEND': JSON.stringify(process.env.REACT_APP_FORCE_BACKEND || ''),
   }),
 ]
 

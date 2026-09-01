@@ -18,6 +18,7 @@ const {
   computeMaximumLoopedForcing,
   computeLoopForts,
   computeLoopBlockingSets,
+  registerForcingWorkerFactory,
   ForcingApiError,
   isCancelledError,
 } = moduleObject.exports
@@ -43,6 +44,48 @@ const PATH_GRAPH = [
   [1, 0, 1],
   [0, 1, 0],
 ]
+
+// Minimal stand-in for the real forcing Web Worker (see
+// src/workers/forcing.worker.js): a fake message-based transport so
+// worker-first behavior can be exercised without a real Worker/DOM.
+class FakeWorker {
+  constructor(respond) {
+    this.respond = respond
+    this.listeners = {}
+    this.terminated = false
+  }
+
+  addEventListener(type, handler) {
+    this.listeners[type] = this.listeners[type] || []
+    this.listeners[type].push(handler)
+  }
+
+  removeEventListener(type, handler) {
+    this.listeners[type] = (this.listeners[type] || []).filter(fn => fn !== handler)
+  }
+
+  emit(type, event) {
+    for (const handler of (this.listeners[type] || [])) handler(event)
+  }
+
+  postMessage(message) {
+    this.respond(message, this)
+  }
+
+  terminate() {
+    this.terminated = true
+  }
+}
+
+const withNoFetchCalls = async fn => {
+  const original = global.fetch
+  global.fetch = () => { throw new Error('fetch should not have been called') }
+  try {
+    await fn()
+  } finally {
+    global.fetch = original
+  }
+}
 
 async function main() {
   await withMockFetch(async () => jsonResponse({ ok: true, operations: ['looped'] }), async () => {
@@ -98,6 +141,82 @@ async function main() {
       error => isCancelledError(error),
     )
   })
+
+  // --- worker-first: a registered worker factory is used instead of the backend ---
+  await withNoFetchCalls(async () => {
+    registerForcingWorkerFactory(() => new FakeWorker((message, worker) => {
+      setTimeout(() => worker.emit('message', {
+        data: { id: message.id, ok: true, result: { loopedVertices: [], number: 1, sets: [[0]] } },
+      }), 0)
+    }))
+
+    const response = await computeLoopedForcing({ adjacencyMatrix: PATH_GRAPH, loopedVertices: [] })
+    assert.strictEqual(response.result.number, 1)
+    assert.strictEqual(response.meta.source, 'worker')
+  })
+
+  // --- worker unavailable (factory throws): falls back to the backend ---
+  await withMockFetch(async () => jsonResponse({ result: { number: 7, loopedVertices: [], sets: [] } }), async () => {
+    registerForcingWorkerFactory(() => { throw new Error('Worker is not supported in this environment.') })
+
+    const response = await computeLoopedForcing({ adjacencyMatrix: PATH_GRAPH, loopedVertices: [] })
+    assert.strictEqual(response.result.number, 7)
+  })
+
+  // --- worker reports a computation failure: falls back to the backend ---
+  await withMockFetch(async () => jsonResponse({ result: { number: 8, loopedVertices: [], sets: [] } }), async () => {
+    registerForcingWorkerFactory(() => new FakeWorker((message, worker) => {
+      setTimeout(() => worker.emit('message', {
+        data: { id: message.id, ok: false, error: { code: 'error', message: 'computation blew up' } },
+      }), 0)
+    }))
+
+    const response = await computeLoopedForcing({ adjacencyMatrix: PATH_GRAPH, loopedVertices: [] })
+    assert.strictEqual(response.result.number, 8)
+  })
+
+  // --- cancelling while the worker is in flight rejects with an AbortError and
+  // never falls back to the backend (matches existing cancel-semantics) ---
+  await withNoFetchCalls(async () => {
+    let cancelMessage = null
+    registerForcingWorkerFactory(() => new FakeWorker((message, worker) => {
+      if (message.type === 'cancel') {
+        cancelMessage = message
+        return
+      }
+      // Never resolves on its own; only the abort path should settle this.
+      void worker
+    }))
+
+    const controller = new AbortController()
+    const pending = computeLoopedForcing({
+      adjacencyMatrix: PATH_GRAPH, loopedVertices: [], signal: controller.signal,
+    })
+    controller.abort()
+
+    await assert.rejects(() => pending, error => isCancelledError(error))
+    assert.ok(cancelMessage, 'aborting should notify the worker so it can stop cooperatively')
+  })
+
+  // --- REACT_APP_FORCE_BACKEND=true always uses the backend, even with a
+  // working worker factory registered ---
+  await withMockFetch(async () => jsonResponse({ result: { number: 9, loopedVertices: [], sets: [] } }), async () => {
+    process.env.REACT_APP_FORCE_BACKEND = 'true'
+    registerForcingWorkerFactory(() => new FakeWorker((message, worker) => {
+      setTimeout(() => worker.emit('message', {
+        data: { id: message.id, ok: true, result: { number: -1, loopedVertices: [], sets: [] } },
+      }), 0)
+    }))
+
+    try {
+      const response = await computeLoopedForcing({ adjacencyMatrix: PATH_GRAPH, loopedVertices: [] })
+      assert.strictEqual(response.result.number, 9)
+    } finally {
+      delete process.env.REACT_APP_FORCE_BACKEND
+    }
+  })
+
+  registerForcingWorkerFactory(null)
 
   console.log('api.test.js: all tests passed')
 }
