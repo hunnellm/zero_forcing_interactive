@@ -3,23 +3,56 @@ const assert = require('assert')
 // Inline implementations so this file can run without a build step.
 // Keep in sync with src/lib/matrix-utils.js.
 
-const addNodeToMatrix = matrix => {
+const isValidAdjacencyMatrix = matrix => {
+  if (!Array.isArray(matrix)) return false
   const n = matrix.length
-  const newMatrix = matrix.map(row => [...row, 0])
+  return matrix.every(row =>
+    Array.isArray(row) && row.length === n && row.every(value => value === 0 || value === 1),
+  )
+}
+
+const sanitizeAdjacencyMatrix = matrix => {
+  if (isValidAdjacencyMatrix(matrix)) return matrix
+  if (!Array.isArray(matrix)) return []
+
+  const n = matrix.length
+  const repaired = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
+    const row = matrix[i]
+    const value = Array.isArray(row) ? row[j] : undefined
+    return value === 1 || value === true ? 1 : 0
+  }))
+
+  for (let i = 0; i < n; i += 1) {
+    repaired[i][i] = 0
+    for (let j = i + 1; j < n; j += 1) {
+      const connected = repaired[i][j] === 1 || repaired[j][i] === 1 ? 1 : 0
+      repaired[i][j] = connected
+      repaired[j][i] = connected
+    }
+  }
+  return repaired
+}
+
+const addNodeToMatrix = matrix => {
+  const safeMatrix = sanitizeAdjacencyMatrix(matrix)
+  const n = safeMatrix.length
+  const newMatrix = safeMatrix.map(row => [...row, 0])
   newMatrix.push(Array(n + 1).fill(0))
   return newMatrix
 }
 
 const addEdgeToMatrix = (matrix, src, tgt) => {
-  if (src === tgt) return matrix.map(row => [...row])
-  const newMatrix = matrix.map(row => [...row])
+  const safeMatrix = sanitizeAdjacencyMatrix(matrix)
+  const newMatrix = safeMatrix.map(row => [...row])
+  if (src === tgt || !newMatrix[src] || !newMatrix[tgt]) return newMatrix
   newMatrix[src][tgt] = 1
   newMatrix[tgt][src] = 1
   return newMatrix
 }
 
 const removeNodeFromMatrix = (matrix, nodeIndex) => {
-  return matrix
+  const safeMatrix = sanitizeAdjacencyMatrix(matrix)
+  return safeMatrix
     .filter((_, i) => i !== nodeIndex)
     .map(row => row.filter((_, j) => j !== nodeIndex))
 }
@@ -119,5 +152,87 @@ assert.deepStrictEqual(buildEdgeListFromMatrix(triangleMatrix), [
 // computeInitialLayout with an identical edge set for identical graphs.
 const rebuilt = buildEdgeListFromMatrix(triangleMatrix)
 assert.deepStrictEqual(rebuilt, buildEdgeListFromMatrix(triangleMatrix))
+
+// isValidAdjacencyMatrix tests
+
+assert.strictEqual(isValidAdjacencyMatrix([[0, 1], [1, 0]]), true)
+assert.strictEqual(isValidAdjacencyMatrix([]), true)
+assert.strictEqual(isValidAdjacencyMatrix(null), false)
+assert.strictEqual(isValidAdjacencyMatrix('not a matrix'), false)
+assert.strictEqual(isValidAdjacencyMatrix([[0, 1], [1]]), false, 'ragged rows are invalid')
+assert.strictEqual(isValidAdjacencyMatrix([[0, 1, 0], [1, 0, 0]]), false, 'non-square is invalid')
+assert.strictEqual(isValidAdjacencyMatrix([[0, 2], [2, 0]]), false, 'non-binary entries are invalid')
+
+// sanitizeAdjacencyMatrix tests
+
+// Already-valid matrices are returned unchanged (same reference)
+const alreadyValid = [[0, 1], [1, 0]]
+assert.strictEqual(sanitizeAdjacencyMatrix(alreadyValid), alreadyValid)
+
+// Non-array input resets to an empty graph
+assert.deepStrictEqual(sanitizeAdjacencyMatrix(null), [])
+assert.deepStrictEqual(sanitizeAdjacencyMatrix(undefined), [])
+assert.deepStrictEqual(sanitizeAdjacencyMatrix('garbage'), [])
+
+// Ragged rows are repaired to n x n (n = number of rows), missing entries default to 0
+assert.deepStrictEqual(sanitizeAdjacencyMatrix([[0, 1, 0], [1, 0], [0]]), [
+  [0, 1, 0],
+  [1, 0, 0],
+  [0, 0, 0],
+])
+
+// Rows longer than n are truncated to n x n
+assert.deepStrictEqual(sanitizeAdjacencyMatrix([[0, 1, 0, 9], [1, 0]]), [
+  [0, 1],
+  [1, 0],
+])
+
+// Asymmetric entries recovered during a ragged-row repair are OR-ed across
+// the diagonal, so a one-sided edge caused by corruption survives instead of
+// being silently dropped (an already-square/binary-but-asymmetric matrix is
+// considered valid shape-wise and is left untouched by sanitize, matching
+// what the loop-analysis API itself validates -- see normalizeAdjacencyMatrix
+// in src/lib/api.js).
+assert.deepStrictEqual(sanitizeAdjacencyMatrix([[0, 1], []]), [
+  [0, 1],
+  [1, 0],
+])
+
+// Self-loops recovered during a repair are cleared, since this app's
+// adjacency matrices never represent them (an already-square/binary matrix
+// with 1s on the diagonal is left untouched by sanitize, matching what the
+// API validates)
+assert.deepStrictEqual(sanitizeAdjacencyMatrix([[1, 1], [1]]), [
+  [0, 1],
+  [1, 0],
+])
+
+// Non-binary/truthy entries are coerced to 0/1
+assert.deepStrictEqual(sanitizeAdjacencyMatrix([[0, 'x'], [true, 0]]), [
+  [0, 1],
+  [1, 0],
+])
+
+// Simulates a malformed value loaded from localStorage on app startup:
+// non-square/ragged data must repair into something the loop-analysis API
+// (src/lib/api.js normalizeAdjacencyMatrix) will accept.
+const malformedFromStorage = [[0, 1, 1], [1, 0], [1]]
+const repairedFromStorage = sanitizeAdjacencyMatrix(malformedFromStorage)
+assert.strictEqual(isValidAdjacencyMatrix(repairedFromStorage), true)
+assert.deepStrictEqual(repairedFromStorage, [
+  [0, 1, 1],
+  [1, 0, 0],
+  [1, 0, 0],
+])
+
+// addNodeToMatrix, addEdgeToMatrix, and removeNodeFromMatrix all preserve the
+// square-shape invariant even when handed a malformed matrix (e.g. because
+// upstream state briefly went ragged, or malformed data slipped through)
+assert.strictEqual(isValidAdjacencyMatrix(addNodeToMatrix([[0, 1], [1]])), true)
+assert.strictEqual(isValidAdjacencyMatrix(addEdgeToMatrix([[0, 1], [1]], 0, 1)), true)
+assert.strictEqual(isValidAdjacencyMatrix(removeNodeFromMatrix([[0, 1, 0], [1], [0, 0]], 0)), true)
+
+// addEdgeToMatrix ignores out-of-bounds indices instead of throwing
+assert.deepStrictEqual(addEdgeToMatrix([[0, 1], [1, 0]], 0, 5), [[0, 1], [1, 0]])
 
 console.log('matrix-utils tests passed')
