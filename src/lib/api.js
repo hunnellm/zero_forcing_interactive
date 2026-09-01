@@ -41,6 +41,24 @@ export class ForcingApiError extends Error {
 
 export const isCancelledError = error => error?.name === 'AbortError'
 
+// Validates that `adjacencyMatrix` is a square array-of-arrays before it is
+// handed off to the worker or backend. Failing fast here means malformed
+// input (e.g. undefined/null, a jagged array, or a non-square matrix) is
+// reported clearly instead of surfacing as an opaque worker/backend failure.
+const normalizeAdjacencyMatrix = adjacencyMatrix => {
+  if (!Array.isArray(adjacencyMatrix)) {
+    throw new ForcingApiError('Invalid graph: adjacencyMatrix must be an array of rows.')
+  }
+  const n = adjacencyMatrix.length
+  for (let i = 0; i < n; i++) {
+    const row = adjacencyMatrix[i]
+    if (!Array.isArray(row) || row.length !== n) {
+      throw new ForcingApiError('Invalid graph: adjacencyMatrix must be square (n x n).')
+    }
+  }
+  return adjacencyMatrix
+}
+
 // Default per-request in-browser computation budget before falling back to
 // the backend (if reachable). Kept generous since these are exponential
 // brute-force algorithms; see src/lib/forcing/compute-core.js.
@@ -212,20 +230,40 @@ export const checkBackendAvailable = async (signal) => {
 }
 
 const postForcing = async (endpoint, { adjacencyMatrix, loopedVertices, signal }) => {
-  const body = { adjacencyMatrix, loopedVertices: [...(loopedVertices || [])].sort((a, b) => a - b) }
+  const matrix = normalizeAdjacencyMatrix(adjacencyMatrix)
+  const body = { adjacencyMatrix: matrix, loopedVertices: [...(loopedVertices || [])].sort((a, b) => a - b) }
   const startedAt = Date.now()
+  const vertexCount = matrix.length
 
+  let workerError = null
   try {
     const result = await runViaWorker(endpoint, body, { signal })
-    return { result, meta: { elapsedMs: Date.now() - startedAt, vertexCount: adjacencyMatrix.length, source: 'worker' } }
+    return { result, meta: { elapsedMs: Date.now() - startedAt, vertexCount, source: 'worker' } }
   } catch (error) {
     if (isCancelledError(error)) throw error
     // Any other worker failure (unavailable, crashed, timed out, or an
     // unexpected computation error) falls back to the backend API, if one
-    // is reachable - see the module docstring above.
+    // is reachable - see the module docstring above. Preserve it so that,
+    // if the backend fallback also fails, both causes can be surfaced.
+    workerError = error
   }
 
-  return requestJson(`/api/forcing/${ endpoint }`, { method: 'POST', body, signal })
+  try {
+    return await requestJson(`/api/forcing/${ endpoint }`, { method: 'POST', body, signal })
+  } catch (backendError) {
+    if (isCancelledError(backendError)) throw backendError
+    // Only surface the combined two-stage message when the worker actually
+    // attempted (and failed at) the computation - if no worker was ever
+    // available (e.g. unsupported browser, or no factory registered), the
+    // backend error alone is the whole story.
+    if (workerError && !(workerError instanceof WorkerUnavailableError)) {
+      throw new ForcingApiError(
+        'In-browser computation failed and backend fallback is unavailable.',
+        { cause: { workerError, backendError } },
+      )
+    }
+    throw backendError
+  }
 }
 
 export const computeLoopedForcing = ({ adjacencyMatrix, loopedVertices, signal }) => (
