@@ -6,6 +6,7 @@ import { Matrix } from 'ml-matrix'
 import { addNodeToMatrix, addEdgeToMatrix, removeNodeFromMatrix, buildEdgeListFromMatrix } from '../../lib/matrix-utils'
 import { encodeGraph6 } from '../../lib/graph6'
 import { computeInitialLayout } from '../../lib/layout'
+import { formatLoopAnalysisError } from '../computation-panel-shared'
 import {
   computeLoopBlockingSets,
   computeLoopedForcing,
@@ -398,7 +399,7 @@ export const GraphProvider = ({ children }) => {
       setLoopComputation(prev => ({
         ...prev,
         status: COMPUTE_STATUS.ERROR,
-        error: error.message || 'Unable to compute the requested value.',
+        error: formatLoopAnalysisError(error),
         elapsedMs: Date.now() - startedAt,
       }))
     })

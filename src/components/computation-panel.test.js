@@ -77,4 +77,29 @@ const success = panel.createAnalysisHeaderMeta({
 assert.strictEqual(success.statusChip.label, 'Success', 'Successful computations should surface a success chip in compact headers')
 assert.strictEqual(success.elapsedLabel, '2.0s', 'Successful computations should continue to show the elapsed runtime')
 
+// --- formatLoopAnalysisError: two-stage worker + backend fallback failures ---
+const combinedError = panel.formatLoopAnalysisError({
+  message: 'In-browser computation failed and backend fallback is unavailable.',
+  cause: {
+    workerError: { message: 'unknown op', cause: { code: 'protocol' } },
+    backendError: { message: 'Unable to reach the enhanced zero forcing backend.' },
+  },
+})
+
+assert.ok(
+  combinedError.startsWith('In-browser computation failed and backend fallback is unavailable.'),
+  'The combined worker+backend failure message should keep the clear primary text',
+)
+assert.ok(
+  combinedError.includes('unknown op') && combinedError.includes('protocol'),
+  'The combined failure message should append the worker error detail so users can distinguish failure causes',
+)
+
+// Plain (non two-stage) failures should be passed through unchanged.
+assert.strictEqual(
+  panel.formatLoopAnalysisError({ message: 'This graph has too many vertices.' }),
+  'This graph has too many vertices.',
+  'Errors without a worker cause should render as-is',
+)
+
 console.log('computation panel tests passed')

@@ -216,6 +216,38 @@ async function main() {
     }
   })
 
+  // --- invalid adjacency matrix: rejects before any transport call ---
+  await withNoFetchCalls(async () => {
+    registerForcingWorkerFactory(null)
+    await assert.rejects(
+      () => computeLoopedForcing({ adjacencyMatrix: null, loopedVertices: [] }),
+      error => error instanceof ForcingApiError && /must be an array/.test(error.message),
+    )
+    await assert.rejects(
+      () => computeLoopedForcing({ adjacencyMatrix: [[0, 1], [1, 0, 0]], loopedVertices: [] }),
+      error => error instanceof ForcingApiError && /square/.test(error.message),
+    )
+  })
+
+  // --- worker failure + backend fallback failure: combined error with both causes ---
+  await withMockFetch(async () => jsonResponse({ error: 'backend down' }, { ok: false, status: 503 }), async () => {
+    registerForcingWorkerFactory(() => new FakeWorker((message, worker) => {
+      setTimeout(() => worker.emit('message', {
+        data: { id: message.id, ok: false, error: { code: 'protocol', message: 'unknown op' } },
+      }), 0)
+    }))
+
+    await assert.rejects(
+      () => computeLoopedForcing({ adjacencyMatrix: PATH_GRAPH, loopedVertices: [] }),
+      error => (
+        error instanceof ForcingApiError
+        && error.message === 'In-browser computation failed and backend fallback is unavailable.'
+        && error.cause?.workerError?.message === 'unknown op'
+        && error.cause?.backendError?.message === 'backend down'
+      ),
+    )
+  })
+
   registerForcingWorkerFactory(null)
 
   console.log('api.test.js: all tests passed')
