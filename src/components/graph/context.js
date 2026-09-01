@@ -12,6 +12,7 @@ import {
   computeLoopForts,
   computeMaximumLoopedForcing,
   isCancelledError,
+  registerForcingWorkerFactory,
 } from '../../lib/api'
 import {
   FORCING_MODES,
@@ -37,6 +38,18 @@ import {
 
 const initialGraph = []
 const createAnalysisWorker = () => new Worker(new URL('../../lib/forcing-analysis-worker.js', import.meta.url))
+
+// Looped forcing / maximum looped forcing / fort / blocking-set analysis run
+// in-browser by default via this worker (see src/lib/forcing/compute-core.js
+// and src/workers/forcing.worker.js), falling back to the backend `/api`
+// endpoints (server.js) only when a worker is unavailable, fails, or times
+// out. This registration happens once at module load so src/lib/api.js -
+// which is also loaded by the plain-Node test harness and so must never
+// reference `Worker`/`import.meta` itself - can use the worker lazily.
+const FORCING_WORKER_SUPPORTED = typeof Worker !== 'undefined'
+if (FORCING_WORKER_SUPPORTED) {
+  registerForcingWorkerFactory(() => new Worker(new URL('../../workers/forcing.worker.js', import.meta.url)))
+}
 
 const ADVANCED_API_CALLS = {
   [ADVANCED_VARIANTS.LOOPED]: computeLoopedForcing,
@@ -798,6 +811,7 @@ export const GraphProvider = ({ children }) => {
             compute: runLoopComputation,
             cancel: cancelLoopComputation,
             backendAvailable,
+            workerSupported: FORCING_WORKER_SUPPORTED,
             loopedVertices: loopConfiguration.loopedVertices,
             toggleLoopedVertex: loopConfiguration.toggleLoopedVertex,
             clearLoopedVertices: loopConfiguration.clearLoopedVertices,

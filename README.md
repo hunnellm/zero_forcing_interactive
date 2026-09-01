@@ -51,11 +51,10 @@ For **maximum-nullity**, the current app uses the exact graph6 lookup from
 If the graph or selected variant changes after a computation finishes, the old result remains
 visible with a **Stale** badge until you recompute it.
 
-### Looped forcing & fort analysis (backend-powered)
+### Looped forcing & fort analysis (runs in your browser)
 
 A third accordion card, **Looped forcing & fort analysis**, exposes the advanced zero forcing
-algorithms from [`hunnellm/enhanced-zf`](https://github.com/hunnellm/enhanced-zf) via a small
-Express backend (see [Backend API](#backend-api) below):
+algorithms from [`hunnellm/enhanced-zf`](https://github.com/hunnellm/enhanced-zf):
 
 - **looped forcing** — the looped zero forcing number and minimum sets for a chosen loop
   configuration.
@@ -69,10 +68,14 @@ Use the vertex checkboxes to choose which vertices carry a loop (not shown for *
 looped**, which searches over all configurations). Looped vertices are also highlighted on the
 graph with a thicker, distinctly-coloured border and a small loop glyph.
 
-If the backend isn't running, the card shows a warning and the underlying requests will fail
-gracefully with an error message; start it with `npm run server` (see below). These computations
-are exponential in the number of vertices, so both the backend and the UI cap them at 20 vertices;
-the **Compute** button is disabled with an explanatory warning above that size.
+These computations run **entirely in your browser** by default, in a background Web Worker (see
+[In-browser analysis](#in-browser-analysis) below) - no separate server process is required for
+normal use. They are exponential in the number of vertices, so the UI caps them at 20 vertices;
+the **Compute** button is disabled with an explanatory warning above that size, and an
+in-progress computation can be cancelled at any time. If a computation exceeds its in-browser
+time budget (or a worker isn't available in your browser), the app automatically falls back to
+the optional backend described in [Backend API](#backend-api); a warning is only shown if
+*neither* is available.
 
 ### Minimum-set navigation
 
@@ -105,14 +108,43 @@ inspected or exported via the **Generate Graph** tab in the right-side panel.
 - Node 18.0.0
 - NPM 8.6.0
 
-Install dependencies with `npm i`. Start a local development server with `npm start`.
+Install dependencies with `npm i`. Start a local development server with `npm start`. That's it -
+looped forcing, maximum looped forcing, and fort/blocking-set analysis all run in-browser; no
+additional backend process is required for normal use (see below).
 
-## Backend API
+## In-browser analysis
 
-Advanced looped zero forcing computations (looped forcing, maximum looped forcing, loop forts,
-and loop blocking sets) run in a small Express server (`server.js`) that wraps a vendored,
+Looped forcing, maximum looped forcing, loop forts, and loop blocking sets are computed
+client-side by default:
+
+- `src/lib/forcing/compute-core.js` — a pure, dependency-free JS port of the algorithms in
+  `python/loop_zf.py` (no Node/server-only APIs), directly unit-testable and shared between the
+  main thread and the worker below.
+- `src/workers/forcing.worker.js` — runs `compute-core.js` in a Web Worker so the UI stays
+  responsive, using a `{ id, op, payload }` → `{ id, ok, result | error }` message protocol with
+  cooperative cancellation and a per-request timeout (20s by default).
+- `src/lib/api.js` — the client used by the UI (`computeLoopedForcing`, etc.); it tries the
+  worker first and transparently falls back to the backend API described below if a worker is
+  unavailable, crashes, times out, or reports a computation error. Cancelling a computation (e.g.
+  navigating away or pressing **Cancel**) stops the worker cooperatively and never triggers a
+  backend fallback.
+
+These are exponential brute-force algorithms, so the same 20-vertex cap and cancellation UI
+apply regardless of which transport ends up handling a given request (see
+[Looped forcing & fort analysis](#looped-forcing--fort-analysis-runs-in-your-browser) above).
+
+Set `REACT_APP_FORCE_BACKEND=true` at build time (see `sample.env`) to always use the backend
+API instead of the in-browser worker - useful for debugging or verifying parity between the two
+implementations.
+
+## Backend API (optional)
+
+The backend is an optional fallback: a small Express server (`server.js`) that wraps a vendored,
 trimmed-down copy of the [`hunnellm/enhanced-zf`](https://github.com/hunnellm/enhanced-zf) Python
-library (`python/loop_zf.py`, invoked via `python/cli.py`).
+library (`python/loop_zf.py`, invoked via `python/cli.py`) and exposes the same looped forcing /
+maximum looped forcing / loop fort / loop blocking-set computations over HTTP. The frontend only
+calls it when the in-browser worker is unavailable, fails, or times out (see
+[In-browser analysis](#in-browser-analysis) above) - most users never need to run it.
 
 Requires Python 3 (no third-party packages) on the `PATH` as `python3`.
 
@@ -137,9 +169,10 @@ at most 20 vertices) and, where applicable, a `loopedVertices` array of vertex i
 returns `{ result, meta }` on success or `{ error }` on failure.
 
 During local development, run the backend (`npm run server`) alongside the frontend
-(`npm start`); the webpack dev server proxies `/api` requests to the backend automatically. In
-production, set the `FORCING_API_BASE_URL` environment variable at build time to point the
-frontend at the deployed backend's base URL (leave unset for same-origin deployments).
+(`npm start`) if you want to exercise or force the fallback path; the webpack dev server proxies
+`/api` requests to the backend automatically. In production, set the `FORCING_API_BASE_URL`
+environment variable at build time to point the frontend at a separately deployed backend's base
+URL (leave unset for same-origin deployments, or if you don't intend to run a backend at all).
 
 ## Graph input
 
@@ -193,6 +226,8 @@ Tests cover:
 - `src/lib/tikz.test.js` — TikZ export utility (color mapping, coordinate conversion, label escaping, output generation)
 - `src/components/analysis-panel-state.test.js` — persisted drawer state, responsive overlay rules, and accordion state helpers
 - `src/components/computation-panel.test.js` — compact analysis header status, stale, cancel, and elapsed metadata
-- `src/lib/api.test.js` — frontend backend-API client (success, error, network failure, and cancellation handling)
-- `server.test.js` — backend request validation and `/api/forcing/*` endpoints
+- `src/lib/forcing/compute-core.test.js` — in-browser looped forcing/maximum looped/fort/blocking-set algorithms, including parity with the `python/loop_zf.py` reference implementation, vertex-limit enforcement, and cancellation/timeout behavior
+- `src/workers/forcing.worker.test.js` — forcing Web Worker message protocol (success, unknown op, cancellation, timeout)
+- `src/lib/api.test.js` — frontend forcing API client: worker-first execution and backend fallback (unavailable/crashed/errored worker), `REACT_APP_FORCE_BACKEND`, and cancellation handling
+- `server.test.js` — backend request validation and `/api/forcing/*` endpoints (optional fallback path)
 - `src/index.test.js` — regression guard ensuring `src/index.js` imports the `regenerator-runtime` polyfill needed by async/await elsewhere in the app
