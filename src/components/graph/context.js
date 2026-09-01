@@ -24,6 +24,7 @@ import {
   COMPUTE_OPERATIONS,
   COMPUTE_STATUS,
   MAX_DISPLAYED_MINIMUM_SETS,
+  MAX_LOOP_VERTICES,
   NUMBER_VARIANTS,
   SET_VARIANTS,
   clampActiveSetIndex,
@@ -306,6 +307,21 @@ export const GraphProvider = ({ children }) => {
   }, [clearElapsedTimer])
 
   const runLoopComputation = useCallback(() => {
+    if (adjacencyMatrix.rows > MAX_LOOP_VERTICES) {
+      if (loopRequestRef.current) {
+        loopRequestRef.current.abort()
+        loopRequestRef.current = null
+      }
+      clearElapsedTimer(loopTimerRef)
+      setLoopComputation(prev => ({
+        ...prev,
+        status: COMPUTE_STATUS.ERROR,
+        error: `This computation supports at most ${ MAX_LOOP_VERTICES } vertices; the current graph has ${ adjacencyMatrix.rows }.`,
+        elapsedMs: 0,
+      }))
+      return
+    }
+
     const cachedResult = loopCacheRef.current.get(loopCacheKey)
     if (cachedResult) {
       setLoopComputation({
@@ -373,7 +389,7 @@ export const GraphProvider = ({ children }) => {
         elapsedMs: Date.now() - startedAt,
       }))
     })
-  }, [adjacencyMatrix.data, clearElapsedTimer, loopCacheKey, loopConfiguration.loopedVertices, loopVariant])
+  }, [adjacencyMatrix.data, adjacencyMatrix.rows, clearElapsedTimer, loopCacheKey, loopConfiguration.loopedVertices, loopVariant])
 
   const runNumberComputation = useCallback(() => {
     const cachedResult = numberCacheRef.current.get(numberCacheKey)

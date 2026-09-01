@@ -70,7 +70,9 @@ looped**, which searches over all configurations). Looped vertices are also high
 graph with a thicker, distinctly-coloured border and a small loop glyph.
 
 If the backend isn't running, the card shows a warning and the underlying requests will fail
-gracefully with an error message; start it with `npm run server` (see below).
+gracefully with an error message; start it with `npm run server` (see below). These computations
+are exponential in the number of vertices, so both the backend and the UI cap them at 20 vertices;
+the **Compute** button is disabled with an explanatory warning above that size.
 
 ### Minimum-set navigation
 
@@ -193,3 +195,4 @@ Tests cover:
 - `src/components/computation-panel.test.js` — compact analysis header status, stale, cancel, and elapsed metadata
 - `src/lib/api.test.js` — frontend backend-API client (success, error, network failure, and cancellation handling)
 - `server.test.js` — backend request validation and `/api/forcing/*` endpoints
+- `src/index.test.js` — regression guard ensuring `src/index.js` imports the `regenerator-runtime` polyfill needed by async/await elsewhere in the app

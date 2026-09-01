@@ -7,7 +7,7 @@
     "watch": "webpack --watch",
     "build": "NODE_ENV=production webpack",
     "build-dev": "webpack",
-    "test": "node ./src/lib/graph6.test.js && node ./src/lib/matrix-utils.test.js && node ./src/lib/forcing.test.js && node ./src/lib/forcing-analysis.test.js && node ./src/lib/layout.test.js && node ./src/lib/graph-redraw.test.js && node ./src/lib/tikz.test.js && node ./src/components/analysis-panel-state.test.js && node ./src/components/computation-panel.test.js && node ./server.test.js && node ./src/lib/api.test.js",
+    "test": "node ./src/lib/graph6.test.js && node ./src/lib/matrix-utils.test.js && node ./src/lib/forcing.test.js && node ./src/lib/forcing-analysis.test.js && node ./src/lib/layout.test.js && node ./src/lib/graph-redraw.test.js && node ./src/lib/tikz.test.js && node ./src/components/analysis-panel-state.test.js && node ./src/components/computation-panel.test.js && node ./server.test.js && node ./src/lib/api.test.js && node ./src/index.test.js",
     "lint": "eslint ./src/index.js ./src/components/**/*.js",
     "lint:fix": "eslint --fix ./src/index.js ./src/components/**/*.js",
     "clean": "rm -rf dist",
@@ -53,6 +53,7 @@
     "react-force-graph-2d": "^1.23.10",
     "react-ga4": "^1.4.1",
     "react-resize-detector": "^7.1.1",
+    "regenerator-runtime": "^0.13.9",
     "sass": "^1.50.1",
     "sass-loader": "^12.6.0"
   }

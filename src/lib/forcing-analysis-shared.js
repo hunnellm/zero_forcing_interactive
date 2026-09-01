@@ -57,6 +57,12 @@ export const SET_VARIANTS = Object.freeze({
 // while still giving users a substantial sample of distinct automorphism classes.
 export const MAX_DISPLAYED_MINIMUM_SETS = 50
 
+// Maximum vertex count accepted by the looped-forcing/fort/blocking-set backend
+// (see MAX_VERTICES in server.js, which must stay in sync with this value).
+// Enforcing the same limit client-side lets the UI reject oversized requests
+// before spending a round trip on a guaranteed 400 response.
+export const MAX_LOOP_VERTICES = 20
+
 const normalizeNumericParameter = value => Number(clampParameter(value, 1).toFixed(6))
 
 export const createNumberVariantConfig = ({ variant, alpha, beta }) => (

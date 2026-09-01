@@ -217,4 +217,17 @@ assert.throws(
   'Unrecognized variants should still surface a clear unsupported-variant error',
 )
 
+// The client-side vertex guard (see MAX_LOOP_VERTICES usage in
+// graph/context.js and computation-panel.js) must stay in sync with the
+// backend's own limit (MAX_VERTICES in server.js) so the UI never rejects a
+// request the backend would accept, or vice versa.
+const serverSource = fs.readFileSync(path.resolve(__dirname, '../../server.js'), 'utf8')
+const serverMaxVerticesMatch = serverSource.match(/const MAX_VERTICES = (\d+)/)
+assert.ok(serverMaxVerticesMatch, 'server.js should define a MAX_VERTICES constant')
+assert.strictEqual(
+  shared.MAX_LOOP_VERTICES,
+  Number(serverMaxVerticesMatch[1]),
+  'MAX_LOOP_VERTICES must match server.js MAX_VERTICES so client-side validation cannot drift from the backend limit',
+)
+
 console.log('forcing analysis tests passed')
